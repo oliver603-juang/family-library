@@ -422,7 +422,7 @@
   /* 4 欄網格 */
   .board {
     display: grid;
-    grid-template-columns: repeat(4, 1fr);
+    grid-template-columns: repeat(5, 1fr);
     gap: 0;
     min-height: calc(100vh - 120px);
   }
@@ -1196,6 +1196,97 @@
     .main-import-bar .import-info { max-width: none; text-align: center; font-size: 0.75rem; }
   }
 
+
+  /* ========== v3: 書封縮圖 + 緊湊按鈕 ========== */
+  .book-card-v2 {
+    display: flex;
+    gap: 0.55rem;
+    align-items: flex-start;
+    padding: 0.65rem 0.7rem;
+  }
+  .book-card-v2 .cover {
+    width: 48px;
+    min-height: 64px;
+    max-height: 80px;
+    flex-shrink: 0;
+    background: #e8dfc8;
+    border-radius: 2px;
+    object-fit: cover;
+    box-shadow: 1px 1px 3px rgba(0,0,0,0.15);
+  }
+  .book-card-v2 .book-content {
+    flex: 1;
+    min-width: 0;
+  }
+  .book-card-v2 .book-title {
+    font-size: 0.85rem;
+    line-height: 1.3;
+    font-weight: 700;
+    margin-bottom: 0.35rem;
+  }
+  .book-card-v2 .no-cover {
+    width: 48px;
+    min-height: 64px;
+    flex-shrink: 0;
+    background: linear-gradient(135deg, #e8dfc8 0%, #d4c8ab 100%);
+    border-radius: 2px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.2rem;
+    color: #8a7e6e;
+    box-shadow: 1px 1px 3px rgba(0,0,0,0.15);
+  }
+
+  /* 緊湊版書卡操作列 */
+  .book-actions-compact {
+    display: flex;
+    gap: 0.15rem;
+    margin-top: 0.4rem;
+    padding-top: 0.4rem;
+    border-top: 1px dashed #c9bfaa;
+  }
+  .book-actions-compact button {
+    flex: 1;
+    padding: 0.25rem 0.1rem;
+    background: transparent;
+    border: none;
+    color: #5a4f44;
+    font-size: 0.7rem;
+    font-family: inherit;
+    cursor: pointer;
+    border-radius: 2px;
+    white-space: nowrap;
+    line-height: 1.3;
+  }
+  .book-actions-compact button:hover { background: #eee4d1; }
+
+  /* 手機：≤600px 才切換成分頁模式 */
+  @media (max-width: 600px) {
+    .board { grid-template-columns: 1fr !important; }
+    .column { display: none; }
+    .column.active-col { display: flex; }
+    .mobile-tabs { display: flex !important; overflow-x: auto; }
+  }
+
+  /* ICS 匯出按鈕 */
+  .ics-export-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.3rem;
+    padding: 0.5rem 0.8rem;
+    background: transparent;
+    border: 1.5px solid var(--moss);
+    color: var(--moss);
+    border-radius: 4px;
+    font-family: 'Noto Serif TC', serif;
+    font-weight: 700;
+    font-size: 0.85rem;
+    cursor: pointer;
+    white-space: nowrap;
+  }
+  .ics-export-btn:hover { background: var(--moss); color: white; }
+
 </style>
 </head>
 <body>
@@ -1222,6 +1313,7 @@
   <div class="main-import-bar">
     <button class="import-main-btn" onclick="importFromClipboard()">📋 從北市圖剪貼簿匯入借閱</button>
     <div class="import-info">先到北市圖點 <strong>📥 匯出</strong> 書籤，回來按這顆按鈕</div>
+    <button class="ics-export-btn" onclick="exportToICS()">📅 匯出行事曆</button>
   </div>
 
   <div class="mobile-tabs" id="mobileTabs"></div>
@@ -1356,7 +1448,8 @@ const DEFAULT_DATA = {
     { id: 'p1', name: '爸爸',   color: '#2d4a3e', cardNo: '', password: '' },
     { id: 'p2', name: '媽媽',   color: '#7a3a52', cardNo: '', password: '' },
     { id: 'p3', name: '老大',   color: '#3a5a7a', cardNo: '', password: '' },
-    { id: 'p4', name: '老二',   color: '#8a6a2a', cardNo: '', password: '' }
+    { id: 'p4', name: '老二',   color: '#8a6a2a', cardNo: '', password: '' },
+    { id: 'p5', name: '老二B', cardNo: '', password: '', color: '#c68b2a' }
   ],
   books: []  // { id, personId, title, lentDate, dueDate, renewed, reserved, note }
 };
@@ -1727,20 +1820,20 @@ function renderBook(b) {
   }
   flagsHtml += '</div>';
 
-  el.innerHTML = `
-    <div class="book-title">${escapeHtml(b.title || '未命名')}</div>
-    <div class="book-meta">
-      <span class="book-due">📅 ${dueStr}</span>
-      <span class="book-days">${daysLabel}</span>
-      ${b.note ? `<span style="font-size:0.7rem;">· ${escapeHtml(b.note)}</span>` : ''}
-    </div>
-    ${flagsHtml}
-    <div class="book-actions">
-      <button onclick='openBookModal(${JSON.stringify(b.id)}, ${JSON.stringify(b.personId)})'>✏ 編輯</button>
-      <button onclick='markRenewed(${JSON.stringify(b.id)})'>🔄 已續借</button>
-      <button onclick='markReturned(${JSON.stringify(b.id)})'>✓ 已歸還</button>
-    </div>
-  `;
+  el.innerHTML = `<div class="book-card-v2 ${dueClass}">
+      ${b.cover ? `<img class="cover" src="${escapeHtml(b.cover)}" alt="封面" onerror="this.outerHTML='<div class=\'no-cover\'>📖</div>'">` : `<div class="no-cover">📖</div>`}
+      <div class="book-content">
+        <div class="book-title">${escapeHtml(b.title)}</div>
+        <div class="book-meta">📅 ${b.dueDate}</div>
+        <div class="book-tags">${dueTag}${b.note ? ` · ${escapeHtml(b.note)}` : ''}</div>
+        ${renewStatus}
+        <div class="book-actions-compact">
+          <button onclick='openBookModal(${JSON.stringify(b.id)}, ${JSON.stringify(b.personId)})'>✏ 編輯</button>
+          <button onclick='markRenewed(${JSON.stringify(b.id)})'>🔄 續借</button>
+          <button onclick='markReturned(${JSON.stringify(b.id)})'>✓ 歸還</button>
+        </div>
+      </div>
+    </div>`;
   return el;
 }
 
@@ -1941,15 +2034,10 @@ function buildBookmarkletCode(cardNo, password, personName) {
 // 匯出借閱書籤：極簡版——只抓頁面文字複製到剪貼簿，解析邏輯放手帳
 // 這樣書籤短而穩定，解析邏輯可以隨時改進不用重新產生書籤
 function buildExporterBookmarklet(personId, personName) {
-  const pid = JSON.stringify(personId);
-  const LIST_URL = 'https://book.tpml.edu.tw/personal/list?action=getLendFile&form=QueryForm';
-  const LIST_URL_STR = JSON.stringify(LIST_URL);
-  // 書籤功能：
-  // 1) 若不在借閱頁就跳過去
-  // 2) 抓頁面所有文字 + 加上 personId 標頭
-  // 3) 複製到剪貼簿
-  const code = `(function(){function T(m,c){var d=document.createElement('div');d.textContent=m;d.style.cssText='position:fixed;top:20px;left:50%;transform:translateX(-50%);background:'+c+';color:#fff;padding:10px 18px;border-radius:4px;z-index:99999;font-weight:bold';document.body.appendChild(d);setTimeout(function(){d.remove()},3000)}if(!/tpml\\.edu\\.tw/.test(location.host)){T('\\u8acb\\u5230\\u5317\\u5e02\\u5716','#a83c2a');return}if(!/personal\\/list/.test(location.pathname)){T('\\u8df3\\u5230\\u501f\\u95b1\\u9801','#2d4a3e');location.href=${LIST_URL_STR};return}if(document.getElementById('username')){T('\\u5c1a\\u672a\\u767b\\u5165','#a83c2a');return}var body=document.body.innerText||document.body.textContent;var payload='FAMILY_LIBRARY_EXPORT\\nperson:'+${pid}+'\\n---\\n'+body;function copy(t){if(navigator.clipboard)return navigator.clipboard.writeText(t);var ta=document.createElement('textarea');ta.value=t;document.body.appendChild(ta);ta.select();document.execCommand('copy');ta.remove();return Promise.resolve()}copy(payload).then(function(){T('\\u2713 \\u5df2\\u8907\\u88fd\\uff0c\\u56de\\u624b\\u5e33\\u532f\\u5165','#2d4a3e')}).catch(function(){T('\\u8907\\u88fd\\u5931\\u6557','#a83c2a')})})();`;
-  return 'javascript:' + encodeURIComponent(code);
+  const LIST = "https://book.tpml.edu.tw/personal/list?action=getLendFile&form=QueryForm";
+  const coreJs = "(function(){function T(m,c){var d=document.createElement(\"div\");d.textContent=m;d.style.cssText=\"position:fixed;top:20px;left:50%;transform:translateX(-50%);background:\"+c+\";color:#fff;padding:10px 18px;border-radius:4px;z-index:99999;font-weight:bold\";document.body.appendChild(d);setTimeout(function(){d.remove()},3000)}if(!/tpml\\.edu\\.tw/.test(location.host)){T(\"\\u8acb\\u5230\\u5317\\u5e02\\u5716\",\"#a83c2a\");return}if(!/personal\\/list/.test(location.pathname)){T(\"\\u8df3\\u5230\\u501f\\u95b1\\u9801\",\"#2d4a3e\");location.href=\"__LIST__\";return}if(document.getElementById(\"username\")){T(\"\\u672a\\u767b\\u5165\",\"#a83c2a\");return}var bl=document.querySelector(\".booklist\");if(!bl){T(\"\\u627e\\u4e0d\\u5230\\u501f\\u95b1\\u5217\\u8868\",\"#a83c2a\");return}var cs=Array.from(bl.children),books=[];for(var i=0;i<cs.length-1;i++){var L=cs[i],M=cs[i+1];if(!L.classList.contains(\"bookleftblock\")||!M.classList.contains(\"bookmidblock\"))continue;var im=L.querySelector(\"img\"),sr=im?im.src:\"\";var tx=M.textContent||\"\";function nd(s){var m=s.match(/(\\d{4})[-\\/.](\\d{1,2})[-\\/.](\\d{1,2})/);return m?m[1]+\"-\"+(\"0\"+m[2]).slice(-2)+\"-\"+(\"0\"+m[3]).slice(-2):\"\"}var dm=tx.match(/\\u61c9\\u9084\\u65e5\\u671f\\s*[\\uff1a:]\\s*(\\d{4}[-\\/.]\\d{1,2}[-\\/.]\\d{1,2})/);var lm=tx.match(/\\u501f\\u95b1\\u65e5\\u671f\\s*[\\uff1a:]\\s*(\\d{4}[-\\/.]\\d{1,2}[-\\/.]\\d{1,2})/);var rm=tx.match(/\\u7e8c\\u501f\\u6b21\\u6578\\s*[\\uff1a:]\\s*(\\d+)/);var pm=tx.match(/\\u9810\\u7d04\\u4eba\\u6578\\s*[\\uff1a:]\\s*(\\d+)/);var nm=tx.match(/\\u5178\\u85cf\\u5730\\s*[\\uff1a:]\\s*([^\\u689d\\u7d22\\u9928]+?)(?=\\u689d\\u78bc|\\u7d22\\u66f8|\\u9928\\u85cf|$)/);var tm=tx.match(/^\\s*(.+?)(?=\\u4f5c\\u8005|\\u5178\\u85cf)/);if(!dm||!tm)continue;books.push({title:tm[1].trim().slice(0,120),dueDate:nd(dm[1]),lentDate:lm?nd(lm[1]):\"\",renewed:rm?+rm[1]:0,reserved:pm?+pm[1]:0,note:nm?nm[1].trim():\"\",cover:sr});}if(!books.length){T(\"\\u6c92\\u6709\\u501f\\u95b1\\u8cc7\\u6599\",\"#a83c2a\");return}var pl={app:\"FLL\",personId:__PID__,books:books};var json=JSON.stringify(pl);function cp(t){if(navigator.clipboard)return navigator.clipboard.writeText(t);var ta=document.createElement(\"textarea\");ta.value=t;document.body.appendChild(ta);ta.select();document.execCommand(\"copy\");ta.remove();return Promise.resolve()}cp(json).then(function(){T(\"\\u2713 \"+books.length+\"\\u672c\\u5df2\\u8907\\u88fd\",\"#2d4a3e\")}).catch(function(){T(\"\\u8907\\u88fd\\u5931\\u6557\",\"#a83c2a\")});})();";
+  const finalJs = coreJs.replace("__LIST__", LIST).replace("__PID__", JSON.stringify(personId));
+  return "javascript:" + encodeURIComponent(finalJs);
 }
 
 function renderBookmarklets() {
@@ -2019,63 +2107,44 @@ function renderBookmarklets() {
 //   2) {personId, books: [...]}  (舊 JSON 格式，向後相容)
 async function importFromClipboard() {
   let text;
-  try {
-    text = await navigator.clipboard.readText();
-  } catch (e) {
-    toast('無法讀取剪貼簿，請授權瀏覽器讀取剪貼簿');
-    return;
-  }
-  if (!text || !text.trim()) {
-    toast('剪貼簿是空的');
-    return;
-  }
+  try { text = await navigator.clipboard.readText(); }
+  catch (e) { toast('無法讀取剪貼簿'); return; }
+  if (!text) { toast('剪貼簿是空的'); return; }
+
+  // 統一換行符
+  text = text.replace(/\r\n/g, '\n').replace(/\r/g, '\n');
 
   let personId, books;
 
-  if (text.startsWith('FAMILY_LIBRARY_EXPORT')) {
+  // 新格式：JSON (含書封 URL)
+  if (text.startsWith('{') && text.includes('"app":"FLL"')) {
+    try {
+      const p = JSON.parse(text);
+      personId = p.personId;
+      books = p.books;
+    } catch(e) { toast('JSON 解析失敗'); return; }
+  }
+  // 舊格式：FAMILY_LIBRARY_EXPORT 純文字
+  else if (text.startsWith('FAMILY_LIBRARY_EXPORT')) {
     const lines = text.split('\n');
-    const personLine = lines[1] || '';
-    const personMatch = personLine.match(/^person:"?([^"]+)"?$/);
-    if (!personMatch) {
-      toast('匯出資料格式錯誤');
-      return;
-    }
-    personId = personMatch[1].replace(/^"|"$/g, '');
+    const personMatch = (lines[1] || '').match(/^person:\s*"?([^"\s]+)"?\s*$/);
+    if (!personMatch) { toast('格式錯誤'); return; }
+    personId = personMatch[1].trim();
     const sepIdx = text.indexOf('\n---\n');
     const rawText = sepIdx >= 0 ? text.slice(sepIdx + 5) : '';
     books = parseBorrowList(rawText);
   } else {
-    try {
-      const payload = JSON.parse(text);
-      if (!payload.personId || !Array.isArray(payload.books)) throw new Error();
-      personId = payload.personId;
-      books = payload.books;
-    } catch (e) {
-      toast('剪貼簿不是匯入資料，先在北市圖點「📥 匯出」書籤');
-      return;
-    }
-  }
-
-  if (!books || books.length === 0) {
-    toast('沒有找到借閱紀錄（可能是借閱頁沒資料或解析失敗）');
+    toast('剪貼簿不是匯入資料，請先點「📥 匯出 XXX」書籤');
     return;
   }
 
+  if (!books || books.length === 0) { toast('沒有借閱紀錄'); return; }
   const person = data.people.find(p => p.id === personId);
-  if (!person) {
-    toast('找不到對應的家人（personId: ' + personId + '）');
-    return;
-  }
+  if (!person) { toast('找不到家人 ' + personId); return; }
 
   const existingCount = data.books.filter(b => b.personId === personId).length;
-
-  const msg = `找到 ${person.name} 的 ${books.length} 本借閱紀錄：\n\n` +
-              books.slice(0, 5).map((b, i) => `${i+1}. ${b.title.slice(0, 30)} (${b.dueDate})`).join('\n') +
-              (books.length > 5 ? `\n...等共 ${books.length} 本` : '') + '\n\n' +
-              `目前 ${person.name} 看板上有 ${existingCount} 本舊資料。\n\n` +
-              `【確定】= 覆蓋（清掉舊的，只留新的）\n` +
-              `【取消】= 合併（舊的保留，以書名比對更新）`;
-  const overwrite = confirm(msg);
+  const overwrite = await showImportConfirm(person, books, existingCount);
+  if (overwrite === null) return;
 
   if (overwrite) {
     data.books = data.books.filter(b => b.personId !== personId);
@@ -2084,26 +2153,22 @@ async function importFromClipboard() {
   let added = 0, updated = 0;
   books.forEach(b => {
     if (!b.title || !b.dueDate) return;
-    const existing = !overwrite && data.books.find(
-      x => x.personId === personId && x.title === b.title
-    );
+    const existing = !overwrite && data.books.find(x => x.personId === personId && x.title === b.title);
     if (existing) {
       existing.dueDate = b.dueDate;
       existing.lentDate = b.lentDate || existing.lentDate;
       existing.renewed = b.renewed || 0;
       existing.reserved = b.reserved || 0;
       existing.note = b.note || existing.note;
+      existing.cover = b.cover || existing.cover;
       updated++;
     } else {
       data.books.push({
         id: 'b_' + Date.now() + '_' + Math.random().toString(36).slice(2, 6),
-        personId: personId,
-        title: b.title,
-        dueDate: b.dueDate,
-        lentDate: b.lentDate || '',
-        renewed: b.renewed || 0,
-        reserved: b.reserved || 0,
-        note: b.note || ''
+        personId, title: b.title, dueDate: b.dueDate,
+        lentDate: b.lentDate || '', renewed: b.renewed || 0,
+        reserved: b.reserved || 0, note: b.note || '',
+        cover: b.cover || ''
       });
       added++;
     }
@@ -2114,8 +2179,27 @@ async function importFromClipboard() {
   if (document.getElementById('bookmarkletModal').classList.contains('show')) {
     closeBookmarklets();
   }
-
   toast(`✓ ${person.name}：新增 ${added} 本${updated > 0 ? `、更新 ${updated} 本` : ''}`);
+}
+
+// 自訂匯入確認彈窗
+function showImportConfirm(person, books, existingCount) {
+  return new Promise(resolve => {
+    const overlay = document.createElement('div');
+    overlay.id = 'importConfirmOverlay';
+    overlay.style.cssText = 'position:fixed;inset:0;background:rgba(42,37,32,0.75);display:flex;align-items:center;justify-content:center;z-index:9999;padding:1rem;';
+    const booksList = books.slice(0, 10).map((b, i) => {
+      const renewedMark = b.renewed >= 1 ? '<span style="color:#a83c2a;font-size:0.7rem;">⚠已續過</span>' : '';
+      const reservedMark = b.reserved > 0 ? `<span style="color:#c68b2a;font-size:0.7rem;">${b.reserved}人預約</span>` : '';
+      return `<li style="padding:0.4rem 0;border-bottom:1px dashed #c9bfaa;display:flex;gap:0.5rem;align-items:baseline;"><span style="color:#8a7e6e;font-family:monospace;flex-shrink:0;">${i+1}.</span><span style="flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${escapeHtml(b.title)}</span><span style="color:#5a4f44;font-family:monospace;font-size:0.85rem;flex-shrink:0;">${b.dueDate}</span>${renewedMark}${reservedMark}</li>`;
+    }).join('');
+    const moreNote = books.length > 10 ? `<div style="text-align:center;color:#8a7e6e;font-size:0.8rem;margin-top:0.5rem;">...等共 ${books.length} 本</div>` : '';
+    overlay.innerHTML = `<div style="background:#f4ede0;border:2.5px solid ${person.color};border-radius:6px;padding:1.5rem;max-width:520px;width:100%;max-height:85vh;overflow-y:auto;box-shadow:8px 8px 0 rgba(42,37,32,0.4);"><h2 style="font-family:'Noto Serif TC',serif;font-size:1.2rem;margin-bottom:0.4rem;color:${person.color};">📥 匯入 ${escapeHtml(person.name)} 的借閱</h2><div style="font-size:0.85rem;color:#5a4f44;margin-bottom:0.8rem;">從北市圖抓到 <strong>${books.length} 本</strong>，看板上目前有 <strong>${existingCount} 本</strong>舊資料</div><ul style="list-style:none;padding:0.3rem 0.8rem;margin:0 0 1rem;max-height:300px;overflow-y:auto;background:#fffcf5;border:1px solid #c9bfaa;border-radius:3px;">${booksList}</ul>${moreNote}<div style="display:flex;gap:0.5rem;margin-top:1rem;"><button id="imp-cancel" style="flex:1;padding:0.7rem;border:1.5px solid #c9bfaa;background:transparent;color:#5a4f44;border-radius:3px;cursor:pointer;font-size:0.9rem;">取消</button><button id="imp-merge" style="flex:1.5;padding:0.7rem;border:1.5px solid ${person.color};background:transparent;color:${person.color};border-radius:3px;cursor:pointer;font-size:0.9rem;font-weight:700;">🔀 合併</button><button id="imp-overwrite" style="flex:1.5;padding:0.7rem;border:none;background:${person.color};color:white;border-radius:3px;cursor:pointer;font-size:0.9rem;font-weight:700;">🔄 覆蓋</button></div></div>`;
+    document.body.appendChild(overlay);
+    overlay.querySelector('#imp-cancel').onclick = () => { overlay.remove(); resolve(null); };
+    overlay.querySelector('#imp-merge').onclick = () => { overlay.remove(); resolve(false); };
+    overlay.querySelector('#imp-overwrite').onclick = () => { overlay.remove(); resolve(true); };
+  });
 }
 
 // 解析北市圖借閱頁的純文字
@@ -2127,6 +2211,101 @@ async function importFromClipboard() {
 //   借閱日期：2026-03-27應還日期 : 2026-05-12     ← 兩個日期在同一行
 //   續借次數：1預約人數：0                         ← 兩個數字在同一行
 //   續借                                           ← 續借按鈕
+// 匯出行事曆 (.ics) - 可匯入 Google Calendar，自動 Gmail 提醒
+function exportToICS() {
+  if (!data.books.length) {
+    toast('沒有借閱紀錄可以匯出');
+    return;
+  }
+  const ics = [
+    'BEGIN:VCALENDAR',
+    'VERSION:2.0',
+    'PRODID:-//FamilyLibrary//TW',
+    'CALSCALE:GREGORIAN',
+    'METHOD:PUBLISH',
+    'X-WR-CALNAME:家庭借閱到期提醒'
+  ];
+  const now = new Date();
+  const dtstamp = now.toISOString().replace(/[-:]/g, '').replace(/\.\d{3}/, '');
+  data.books.forEach(b => {
+    if (!b.dueDate) return;
+    const person = data.people.find(p => p.id === b.personId);
+    const personName = person ? person.name : '?';
+    const uid = b.id + '@family-library.local';
+    const dateStr = b.dueDate.replace(/-/g, '');
+    const dt = new Date(b.dueDate);
+    const next = new Date(dt);
+    next.setDate(next.getDate() + 1);
+    const dtend = next.toISOString().slice(0,10).replace(/-/g, '');
+    
+    ics.push('BEGIN:VEVENT');
+    ics.push('UID:' + uid);
+    ics.push('DTSTAMP:' + dtstamp);
+    ics.push('DTSTART;VALUE=DATE:' + dateStr);
+    ics.push('DTEND;VALUE=DATE:' + dtend);
+    ics.push('SUMMARY:📚 ' + personName + '：' + b.title + ' 到期');
+    ics.push('DESCRIPTION:' + personName + ' 的書今天要還\\n續借：' + (b.renewed || 0) + ' 次\\n預約：' + (b.reserved || 0) + ' 人' + (b.note ? '\\n典藏：' + b.note : ''));
+    // 2 個提醒：前 1 天 / 當天早上
+    ics.push('BEGIN:VALARM');
+    ics.push('TRIGGER:-P1D');
+    ics.push('ACTION:DISPLAY');
+    ics.push('DESCRIPTION:借閱書明天到期');
+    ics.push('END:VALARM');
+    ics.push('BEGIN:VALARM');
+    ics.push('TRIGGER:-PT1H');
+    ics.push('ACTION:DISPLAY');
+    ics.push('DESCRIPTION:借閱書今天到期');
+    ics.push('END:VALARM');
+    ics.push('END:VEVENT');
+  });
+  ics.push('END:VCALENDAR');
+  
+  const blob = new Blob([ics.join('\r\n')], { type: 'text/calendar;charset=utf-8' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = 'family-library-' + new Date().toISOString().slice(0,10) + '.ics';
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+  
+  // 顯示 Google Calendar 匯入教學
+  showICSInstructions();
+}
+
+// 顯示 ICS 匯入教學
+function showICSInstructions() {
+  const overlay = document.createElement('div');
+  overlay.style.cssText = 'position:fixed;inset:0;background:rgba(42,37,32,0.75);display:flex;align-items:center;justify-content:center;z-index:9999;padding:1rem;';
+  overlay.innerHTML = `
+    <div style="background:#f4ede0;border:2.5px solid #2d4a3e;border-radius:6px;padding:1.5rem;max-width:500px;width:100%;box-shadow:8px 8px 0 rgba(42,37,32,0.4);">
+      <h2 style="font-family:'Noto Serif TC',serif;font-size:1.2rem;margin-bottom:0.8rem;color:#2d4a3e;">📅 已下載行事曆檔</h2>
+      <p style="font-size:0.85rem;color:#5a4f44;margin-bottom:1rem;line-height:1.6;">
+        請依以下步驟匯入 Google Calendar，<strong>Gmail 會自動寄到期提醒</strong>：
+      </p>
+      <ol style="font-size:0.88rem;color:#3a322a;line-height:1.8;padding-left:1.2rem;margin-bottom:1rem;">
+        <li>打開 <a href="https://calendar.google.com/calendar/u/0/r/settings/export" target="_blank" style="color:#2d4a3e;font-weight:700;">Google 日曆匯入頁</a></li>
+        <li>點「<strong>從電腦選取檔案</strong>」→ 選剛下載的 .ics 檔</li>
+        <li>選要匯入的日曆（建議「主要日曆」或建立「借閱提醒」日曆）</li>
+        <li>點「<strong>匯入</strong>」</li>
+        <li>完成！每本書到期前 1 天 Gmail 會自動收到通知 📧</li>
+      </ol>
+      <div style="background:#fffcf5;border-left:3px solid #c68b2a;padding:0.6rem 0.8rem;font-size:0.78rem;color:#5a4f44;margin-bottom:1rem;line-height:1.5;">
+        💡 <strong>提示</strong>：不要雙擊 .ics 檔（會用 Outlook 開啟）。一定要在 Google Calendar 網頁上匯入。
+      </div>
+      <div style="display:flex;gap:0.5rem;">
+        <a href="https://calendar.google.com/calendar/u/0/r/settings/export" target="_blank" style="flex:1.5;padding:0.7rem;background:#2d4a3e;color:white;border-radius:3px;text-align:center;text-decoration:none;font-weight:700;font-family:inherit;">🗓️ 前往 Google 日曆</a>
+        <button onclick="this.closest('div[style*=fixed]').remove()" style="flex:1;padding:0.7rem;border:1.5px solid #c9bfaa;background:transparent;color:#5a4f44;border-radius:3px;cursor:pointer;font-family:inherit;">稍後再說</button>
+      </div>
+    </div>
+  `;
+  document.body.appendChild(overlay);
+  overlay.addEventListener('click', e => {
+    if (e.target === overlay) overlay.remove();
+  });
+}
+
 function parseBorrowList(rawText) {
   if (!rawText) return [];
   const lines = rawText.split('\n').map(l => l.trim()).filter(l => l.length > 0);
