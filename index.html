@@ -1661,26 +1661,69 @@ function closeBookmarklets() {
 
 // 產生書籤小工具的 JS 代碼
 function buildBookmarkletCode(cardNo, password, personName) {
-  // 這段 JS 會在北市圖登入頁執行：找到欄位 → 填入值 → 觸發 input/change 事件 → 自動 focus 驗證碼欄
+  // 這段 JS 會在北市圖頁面執行：
+  // 1. 若登入框沒打開，自動點「登入」按鈕並等待欄位出現
+  // 2. 找到欄位後填入帳密（注意：captcha 欄位要用 name 選取，不能用 id，因為北市圖的 HTML 有 bug，label 和 input 共用 ID）
+  // 3. 自動 focus 到驗證碼欄位，讓使用者直接輸入
   const code = `(function(){
-    var u=document.getElementById('username');
-    var p=document.getElementById('password');
-    var c=document.getElementById('captchaLabel');
-    if(!u||!p){alert('找不到登入欄位，請確認已開啟北市圖登入框');return;}
-    function fill(el,val){
-      var setter=Object.getOwnPropertyDescriptor(window.HTMLInputElement.prototype,'value').set;
-      setter.call(el,val);
-      el.dispatchEvent(new Event('input',{bubbles:true}));
-      el.dispatchEvent(new Event('change',{bubbles:true}));
+    var safeName=${JSON.stringify(personName.replace(/'/g, ""))};
+    function notify(text, bg){
+      var n=document.createElement('div');
+      n.textContent=text;
+      n.style.cssText='position:fixed;top:20px;left:50%;transform:translateX(-50%);background:'+bg+';color:#fff;padding:10px 20px;border-radius:4px;z-index:99999;font-weight:bold;box-shadow:0 4px 12px rgba(0,0,0,0.3);font-family:sans-serif;';
+      document.body.appendChild(n);
+      setTimeout(function(){n.remove();},3500);
     }
-    fill(u,${JSON.stringify(cardNo)});
-    fill(p,${JSON.stringify(password)});
-    if(c){c.focus();c.select();}
-    var n=document.createElement('div');
-    n.textContent='✓ 已填入 ${personName.replace(/'/g, "")} 的帳密，請輸入驗證碼';
-    n.style.cssText='position:fixed;top:20px;left:50%;transform:translateX(-50%);background:#2d4a3e;color:#fff;padding:10px 20px;border-radius:4px;z-index:99999;font-weight:bold;box-shadow:0 4px 12px rgba(0,0,0,0.3)';
-    document.body.appendChild(n);
-    setTimeout(function(){n.remove();},3000);
+    function findFields(){
+      return {
+        u: document.getElementById('username'),
+        p: document.getElementById('password'),
+        c: document.querySelector('input[name=\"captcha\"]')
+      };
+    }
+    function fill(el,val){
+      try{
+        var setter=Object.getOwnPropertyDescriptor(window.HTMLInputElement.prototype,'value').set;
+        setter.call(el,val);
+        el.dispatchEvent(new Event('input',{bubbles:true}));
+        el.dispatchEvent(new Event('change',{bubbles:true}));
+      }catch(e){el.value=val;}
+    }
+    function doFill(){
+      var f=findFields();
+      if(!f.u||!f.p){
+        notify('❌ 找不到登入欄位，請手動點「登入」按鈕開啟登入框，再點一次書籤','#a83c2a');
+        return false;
+      }
+      fill(f.u,${JSON.stringify(cardNo)});
+      fill(f.p,${JSON.stringify(password)});
+      if(f.c){try{f.c.focus();}catch(e){}}
+      notify('✓ 已填入 '+safeName+' 的帳密，請輸入驗證碼','#2d4a3e');
+      return true;
+    }
+    // 先試直接填
+    if(doFill())return;
+    // 如果失敗，自動找登入按鈕點擊
+    var loginBtn=null;
+    var btns=document.querySelectorAll('button, a');
+    for(var i=0;i<btns.length;i++){
+      var b=btns[i];
+      if(b.textContent.trim()==='登入'){
+        var r=b.getBoundingClientRect();
+        if(r.width>0&&r.height>0){loginBtn=b;break;}
+      }
+    }
+    if(!loginBtn){
+      notify('❌ 請先到北市圖首頁再點書籤','#a83c2a');
+      return;
+    }
+    loginBtn.click();
+    // 等登入框彈出（最多等 2 秒）
+    var tries=0;
+    var iv=setInterval(function(){
+      tries++;
+      if(doFill()||tries>20){clearInterval(iv);}
+    },100);
   })();`;
   return 'javascript:' + encodeURIComponent(code.replace(/\s+/g, ' ').trim());
 }
