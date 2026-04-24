@@ -1,0 +1,1931 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>家庭借閱手帳</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Serif+TC:wght@500;700;900&family=Noto+Sans+TC:wght@400;500;700&family=JetBrains+Mono:wght@500;700&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --paper: #f4ede0;
+    --paper-dark: #e8dec9;
+    --ink: #2a2520;
+    --ink-soft: #5a4f44;
+    --ink-muted: #8a7e6e;
+    --moss: #2d4a3e;
+    --moss-light: #4a6b5a;
+    --rust: #a83c2a;
+    --rust-dark: #7a2a1c;
+    --amber: #c68b2a;
+    --amber-light: #e8b95a;
+    --sage: #6b8a6b;
+    --line: #c9bfaa;
+
+    /* 4 人主題色 */
+    --p1: #2d4a3e;  /* 墨綠 */
+    --p2: #7a3a52;  /* 酒紅 */
+    --p3: #3a5a7a;  /* 鋼藍 */
+    --p4: #8a6a2a;  /* 金棕 */
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+
+  html, body {
+    background: var(--paper);
+    color: var(--ink);
+    font-family: 'Noto Sans TC', sans-serif;
+    min-height: 100vh;
+    overflow-x: hidden;
+  }
+
+  /* 紙質紋理 */
+  body::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background-image:
+      radial-gradient(circle at 20% 30%, rgba(139, 117, 85, 0.04) 0%, transparent 40%),
+      radial-gradient(circle at 80% 70%, rgba(139, 117, 85, 0.04) 0%, transparent 40%),
+      url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='200' height='200'%3E%3Cfilter id='n'%3E%3CfeTurbulence baseFrequency='0.9' numOctaves='2'/%3E%3CfeColorMatrix values='0 0 0 0 0.15 0 0 0 0 0.13 0 0 0 0 0.10 0 0 0 0.04 0'/%3E%3C/filter%3E%3Crect width='200' height='200' filter='url(%23n)'/%3E%3C/svg%3E");
+    pointer-events: none;
+    z-index: 1;
+  }
+
+  .serif { font-family: 'Noto Serif TC', serif; }
+  .mono { font-family: 'JetBrains Mono', monospace; }
+
+  button { font-family: inherit; cursor: pointer; border: none; background: none; color: inherit; }
+  input { font-family: inherit; }
+
+  /* ===== 鎖屏／登入畫面 ===== */
+  #lockscreen {
+    position: fixed;
+    inset: 0;
+    background: var(--paper);
+    z-index: 100;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 2rem 1rem;
+    overflow-y: auto;
+  }
+  #lockscreen::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background-image:
+      radial-gradient(circle at 50% 0%, rgba(45, 74, 62, 0.08) 0%, transparent 50%),
+      url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='200' height='200'%3E%3Cfilter id='n'%3E%3CfeTurbulence baseFrequency='0.9' numOctaves='2'/%3E%3CfeColorMatrix values='0 0 0 0 0.15 0 0 0 0 0.13 0 0 0 0 0.10 0 0 0 0.04 0'/%3E%3C/filter%3E%3Crect width='200' height='200' filter='url(%23n)'/%3E%3C/svg%3E");
+    pointer-events: none;
+  }
+  .lock-header {
+    text-align: center;
+    margin: 1rem 0 1.5rem;
+    position: relative;
+  }
+  .lock-header .stamp {
+    display: inline-block;
+    font-family: 'Noto Serif TC', serif;
+    font-weight: 900;
+    font-size: 0.75rem;
+    letter-spacing: 0.3em;
+    color: var(--rust);
+    border: 2px solid var(--rust);
+    padding: 0.3rem 0.8rem;
+    transform: rotate(-3deg);
+    margin-bottom: 0.8rem;
+  }
+  .lock-header h1 {
+    font-family: 'Noto Serif TC', serif;
+    font-weight: 900;
+    font-size: 2.2rem;
+    color: var(--ink);
+    letter-spacing: 0.05em;
+  }
+  .lock-header p {
+    color: var(--ink-muted);
+    font-size: 0.85rem;
+    margin-top: 0.4rem;
+    letter-spacing: 0.1em;
+  }
+
+  /* 4 人卡片選擇 */
+  .people-grid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 0.75rem;
+    width: 100%;
+    max-width: 640px;
+    margin-bottom: 1.5rem;
+    position: relative;
+  }
+  .person-card {
+    background: var(--paper-dark);
+    border: 1.5px solid var(--line);
+    border-radius: 4px;
+    padding: 0.9rem 0.5rem;
+    text-align: center;
+    transition: all 0.2s;
+    position: relative;
+    min-height: 120px;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+  }
+  .person-card.active {
+    border-color: var(--accent);
+    box-shadow: 0 4px 0 var(--accent), inset 0 0 0 1px var(--accent);
+    transform: translateY(-2px);
+    background: #fffaf0;
+  }
+  .person-card .avatar {
+    width: 40px; height: 40px;
+    border-radius: 50%;
+    background: var(--accent);
+    color: var(--paper);
+    font-family: 'Noto Serif TC', serif;
+    font-weight: 700;
+    font-size: 1.2rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin: 0 auto;
+  }
+  .person-card .name {
+    font-family: 'Noto Serif TC', serif;
+    font-weight: 700;
+    font-size: 1rem;
+    color: var(--ink);
+  }
+  .person-card .id {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.65rem;
+    color: var(--ink-muted);
+    letter-spacing: 0.05em;
+  }
+  .person-card .check {
+    position: absolute;
+    top: 6px; right: 6px;
+    width: 18px; height: 18px;
+    border-radius: 50%;
+    background: var(--accent);
+    color: white;
+    font-size: 0.7rem;
+    display: none;
+    align-items: center;
+    justify-content: center;
+  }
+  .person-card.active .check { display: flex; }
+
+  /* 驗證碼輸入區 */
+  .captcha-zone {
+    width: 100%;
+    max-width: 360px;
+    position: relative;
+  }
+  .captcha-label {
+    text-align: center;
+    font-family: 'Noto Serif TC', serif;
+    font-size: 0.95rem;
+    color: var(--ink-soft);
+    margin-bottom: 0.8rem;
+    letter-spacing: 0.1em;
+  }
+  .captcha-label .current-person {
+    color: var(--accent);
+    font-weight: 700;
+  }
+  .captcha-display {
+    display: grid;
+    grid-template-columns: repeat(5, 1fr);
+    gap: 0.4rem;
+    margin-bottom: 1.2rem;
+  }
+  .captcha-cell {
+    aspect-ratio: 1;
+    background: var(--paper-dark);
+    border: 2px solid var(--line);
+    border-radius: 4px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-family: 'JetBrains Mono', monospace;
+    font-weight: 700;
+    font-size: 1.8rem;
+    color: var(--ink);
+    transition: all 0.15s;
+  }
+  .captcha-cell.filled {
+    background: #fffaf0;
+    border-color: var(--accent);
+    color: var(--accent);
+  }
+  .captcha-cell.active {
+    border-color: var(--accent);
+    box-shadow: 0 0 0 3px rgba(45, 74, 62, 0.15);
+    animation: pulse 1.2s infinite;
+  }
+  @keyframes pulse {
+    0%, 100% { box-shadow: 0 0 0 3px rgba(45, 74, 62, 0.15); }
+    50% { box-shadow: 0 0 0 6px rgba(45, 74, 62, 0.05); }
+  }
+
+  /* 自製數字鍵盤 */
+  .keypad {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 0.5rem;
+    max-width: 360px;
+    width: 100%;
+  }
+  .key {
+    aspect-ratio: 1.3;
+    background: var(--paper-dark);
+    border: 1.5px solid var(--line);
+    border-radius: 6px;
+    font-family: 'Noto Serif TC', serif;
+    font-weight: 500;
+    font-size: 1.8rem;
+    color: var(--ink);
+    transition: all 0.1s;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    user-select: none;
+    -webkit-user-select: none;
+  }
+  .key:active {
+    background: var(--accent);
+    color: var(--paper);
+    transform: scale(0.96);
+  }
+  .key.action {
+    font-size: 0.85rem;
+    font-family: 'Noto Sans TC', sans-serif;
+    letter-spacing: 0.1em;
+  }
+  .key.enter {
+    background: var(--accent);
+    color: var(--paper);
+    border-color: var(--accent);
+  }
+  .key.back {
+    background: transparent;
+    color: var(--ink-muted);
+  }
+
+  .lock-footer {
+    margin-top: 1.2rem;
+    display: flex;
+    gap: 1rem;
+    font-size: 0.8rem;
+  }
+  .lock-footer button {
+    color: var(--ink-muted);
+    text-decoration: underline;
+    padding: 0.3rem 0.6rem;
+  }
+
+  /* ===== 主畫面 ===== */
+  #app { display: none; position: relative; z-index: 2; }
+
+  .topbar {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 1rem 1.5rem;
+    border-bottom: 2px solid var(--line);
+    background: var(--paper);
+    position: sticky;
+    top: 0;
+    z-index: 10;
+  }
+  .topbar::after {
+    content: '';
+    position: absolute;
+    bottom: -5px;
+    left: 0; right: 0;
+    height: 1px;
+    background: var(--line);
+    opacity: 0.5;
+  }
+  .brand {
+    display: flex;
+    align-items: center;
+    gap: 0.8rem;
+  }
+  .brand .icon {
+    width: 36px; height: 36px;
+    background: var(--moss);
+    color: var(--paper);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 2px;
+    font-family: 'Noto Serif TC', serif;
+    font-weight: 900;
+    font-size: 1.2rem;
+  }
+  .brand .title {
+    font-family: 'Noto Serif TC', serif;
+    font-weight: 700;
+    font-size: 1.15rem;
+    letter-spacing: 0.05em;
+  }
+  .brand .subtitle {
+    font-size: 0.7rem;
+    color: var(--ink-muted);
+    letter-spacing: 0.15em;
+  }
+  .topbar-actions {
+    display: flex;
+    gap: 0.5rem;
+    align-items: center;
+  }
+  .tb-btn {
+    padding: 0.5rem 0.8rem;
+    font-size: 0.8rem;
+    color: var(--ink-soft);
+    border: 1px solid var(--line);
+    border-radius: 3px;
+    transition: all 0.15s;
+  }
+  .tb-btn:hover {
+    background: var(--paper-dark);
+    border-color: var(--ink-soft);
+  }
+  .tb-btn.danger { color: var(--rust); border-color: var(--rust); }
+
+  /* 摘要列 */
+  .summary-bar {
+    display: flex;
+    gap: 1rem;
+    padding: 0.8rem 1.5rem;
+    background: var(--paper-dark);
+    border-bottom: 1px solid var(--line);
+    font-size: 0.85rem;
+    flex-wrap: wrap;
+  }
+  .summary-item {
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+  }
+  .summary-item .dot {
+    width: 10px; height: 10px;
+    border-radius: 50%;
+  }
+  .summary-item.overdue { color: var(--rust); font-weight: 700; }
+  .summary-item.soon { color: var(--amber); font-weight: 500; }
+
+  /* 手機分頁 */
+  .mobile-tabs {
+    display: none;
+    padding: 0.5rem 1rem;
+    gap: 0.4rem;
+    overflow-x: auto;
+    background: var(--paper-dark);
+    border-bottom: 1px solid var(--line);
+  }
+  .mtab {
+    flex-shrink: 0;
+    padding: 0.5rem 0.8rem;
+    border: 1px solid var(--line);
+    border-radius: 3px;
+    background: var(--paper);
+    font-size: 0.85rem;
+    color: var(--ink-soft);
+    display: flex;
+    gap: 0.4rem;
+    align-items: center;
+  }
+  .mtab .mtab-count {
+    background: var(--ink-soft);
+    color: var(--paper);
+    font-size: 0.7rem;
+    padding: 1px 6px;
+    border-radius: 10px;
+    font-family: 'JetBrains Mono', monospace;
+  }
+  .mtab.active {
+    background: var(--ink);
+    color: var(--paper);
+    border-color: var(--ink);
+  }
+  .mtab.active .mtab-count { background: var(--paper); color: var(--ink); }
+
+  /* 4 欄網格 */
+  .board {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 0;
+    min-height: calc(100vh - 120px);
+  }
+  .column {
+    border-right: 1px solid var(--line);
+    padding: 1rem 0.75rem;
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
+  }
+  .column:last-child { border-right: none; }
+
+  .col-header {
+    padding: 0.5rem 0.25rem 0.8rem;
+    border-bottom: 2px solid var(--col-color);
+    margin-bottom: 0.8rem;
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+  }
+  .col-header .col-name {
+    font-family: 'Noto Serif TC', serif;
+    font-weight: 700;
+    font-size: 1.15rem;
+    color: var(--col-color);
+  }
+  .col-header .col-count {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.85rem;
+    color: var(--ink-muted);
+  }
+  .col-header .col-count .num {
+    color: var(--col-color);
+    font-weight: 700;
+    font-size: 1.1rem;
+  }
+
+  /* 書籍卡片 */
+  .books-list {
+    display: flex;
+    flex-direction: column;
+    gap: 0.6rem;
+    flex: 1;
+  }
+  .book {
+    background: #fffcf5;
+    border: 1px solid var(--line);
+    border-left: 4px solid var(--sage);
+    border-radius: 2px;
+    padding: 0.7rem 0.8rem;
+    position: relative;
+    transition: all 0.15s;
+  }
+  .book.soon { border-left-color: var(--amber); background: #fdf6e3; }
+  .book.urgent { border-left-color: var(--rust); background: #faeae5; }
+  .book.renewed { border-left-color: var(--ink-muted); }
+  .book:hover {
+    box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+  }
+
+  .book-title {
+    font-family: 'Noto Serif TC', serif;
+    font-weight: 700;
+    font-size: 0.95rem;
+    color: var(--ink);
+    line-height: 1.35;
+    margin-bottom: 0.4rem;
+    word-break: break-word;
+  }
+  .book-meta {
+    display: flex;
+    gap: 0.6rem;
+    font-size: 0.72rem;
+    color: var(--ink-muted);
+    align-items: center;
+    flex-wrap: wrap;
+  }
+  .book-due {
+    font-family: 'JetBrains Mono', monospace;
+    font-weight: 700;
+    font-size: 0.85rem;
+    color: var(--sage);
+    letter-spacing: 0.05em;
+  }
+  .book.soon .book-due { color: var(--amber); }
+  .book.urgent .book-due { color: var(--rust); }
+
+  .book-days {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.7rem;
+    padding: 1px 6px;
+    border-radius: 2px;
+    background: var(--sage);
+    color: white;
+    font-weight: 700;
+  }
+  .book.soon .book-days { background: var(--amber); }
+  .book.urgent .book-days { background: var(--rust); }
+
+  .book-flags {
+    margin-top: 0.4rem;
+    display: flex;
+    gap: 0.3rem;
+    flex-wrap: wrap;
+  }
+  .flag {
+    font-size: 0.65rem;
+    padding: 1px 5px;
+    border-radius: 2px;
+    font-family: 'Noto Sans TC', sans-serif;
+    letter-spacing: 0.05em;
+  }
+  .flag.cant-renew {
+    background: var(--rust);
+    color: white;
+    font-weight: 700;
+  }
+  .flag.renewed {
+    background: var(--paper-dark);
+    color: var(--ink-soft);
+    border: 1px solid var(--line);
+  }
+  .flag.reserved {
+    background: var(--amber);
+    color: white;
+  }
+
+  .book-actions {
+    display: flex;
+    gap: 0.3rem;
+    margin-top: 0.5rem;
+    padding-top: 0.4rem;
+    border-top: 1px dashed var(--line);
+  }
+  .book-actions button {
+    flex: 1;
+    font-size: 0.7rem;
+    padding: 0.3rem 0.4rem;
+    color: var(--ink-muted);
+    border-radius: 2px;
+    transition: all 0.15s;
+  }
+  .book-actions button:hover {
+    background: var(--paper-dark);
+    color: var(--ink);
+  }
+  .book-actions .del:hover { background: var(--rust); color: white; }
+
+  /* 新增書籍按鈕 */
+  .add-book {
+    margin-top: 0.6rem;
+    padding: 0.6rem;
+    border: 2px dashed var(--line);
+    border-radius: 3px;
+    color: var(--ink-muted);
+    font-size: 0.85rem;
+    text-align: center;
+    font-family: 'Noto Serif TC', serif;
+    transition: all 0.15s;
+    width: 100%;
+    background: transparent;
+  }
+  .add-book:hover {
+    border-color: var(--col-color);
+    color: var(--col-color);
+    background: #fffcf5;
+  }
+
+  .empty-state {
+    text-align: center;
+    padding: 2rem 0.5rem;
+    color: var(--ink-muted);
+    font-size: 0.85rem;
+  }
+  .empty-state .empty-icon {
+    font-size: 2rem;
+    margin-bottom: 0.5rem;
+    opacity: 0.5;
+  }
+
+  /* 彈窗 */
+  .modal-backdrop {
+    position: fixed; inset: 0;
+    background: rgba(42, 37, 32, 0.6);
+    display: none;
+    align-items: center;
+    justify-content: center;
+    z-index: 50;
+    padding: 1rem;
+  }
+  .modal-backdrop.show { display: flex; }
+  .modal {
+    background: var(--paper);
+    border: 2px solid var(--ink);
+    border-radius: 4px;
+    padding: 1.5rem;
+    max-width: 440px;
+    width: 100%;
+    max-height: 90vh;
+    overflow-y: auto;
+    box-shadow: 8px 8px 0 var(--ink);
+  }
+  .modal h2 {
+    font-family: 'Noto Serif TC', serif;
+    font-size: 1.3rem;
+    margin-bottom: 1rem;
+    color: var(--ink);
+  }
+  .field {
+    margin-bottom: 0.9rem;
+  }
+  .field label {
+    display: block;
+    font-size: 0.8rem;
+    color: var(--ink-soft);
+    margin-bottom: 0.3rem;
+    font-weight: 500;
+    letter-spacing: 0.05em;
+  }
+  .field input, .field textarea, .field select {
+    width: 100%;
+    padding: 0.6rem 0.7rem;
+    border: 1.5px solid var(--line);
+    border-radius: 3px;
+    background: #fffcf5;
+    font-size: 0.95rem;
+    color: var(--ink);
+    font-family: inherit;
+  }
+  .field input:focus, .field textarea:focus {
+    outline: none;
+    border-color: var(--moss);
+  }
+  .field .row {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 0.5rem;
+  }
+
+  .modal-actions {
+    display: flex;
+    gap: 0.5rem;
+    margin-top: 1.2rem;
+    justify-content: flex-end;
+  }
+  .btn {
+    padding: 0.6rem 1.2rem;
+    border-radius: 3px;
+    font-size: 0.9rem;
+    font-weight: 500;
+    transition: all 0.15s;
+    border: 1.5px solid;
+  }
+  .btn-primary {
+    background: var(--moss);
+    color: var(--paper);
+    border-color: var(--moss);
+  }
+  .btn-primary:hover { background: var(--ink); border-color: var(--ink); }
+  .btn-ghost {
+    background: transparent;
+    color: var(--ink-soft);
+    border-color: var(--line);
+  }
+  .btn-ghost:hover { background: var(--paper-dark); }
+
+  /* Toast */
+  .toast {
+    position: fixed;
+    bottom: 1.5rem;
+    left: 50%;
+    transform: translateX(-50%) translateY(100px);
+    background: var(--ink);
+    color: var(--paper);
+    padding: 0.8rem 1.4rem;
+    border-radius: 3px;
+    font-size: 0.9rem;
+    opacity: 0;
+    transition: all 0.3s;
+    z-index: 200;
+    pointer-events: none;
+    white-space: nowrap;
+  }
+  .toast.show {
+    opacity: 1;
+    transform: translateX(-50%) translateY(0);
+  }
+
+  /* 複製成功覆蓋層 */
+  #copyOverlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(42, 37, 32, 0.75);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 150;
+    padding: 1rem;
+    animation: fadeIn 0.2s;
+  }
+  @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+
+  .copy-card {
+    background: var(--paper);
+    border: 2.5px solid;
+    border-radius: 6px;
+    padding: 1.5rem;
+    max-width: 420px;
+    width: 100%;
+    box-shadow: 8px 8px 0 rgba(42, 37, 32, 0.4);
+    position: relative;
+  }
+  .copy-stamp {
+    position: absolute;
+    top: -14px;
+    right: 1.2rem;
+    color: white;
+    padding: 0.3rem 0.8rem;
+    font-family: 'Noto Serif TC', serif;
+    font-weight: 700;
+    font-size: 0.85rem;
+    letter-spacing: 0.1em;
+    border-radius: 2px;
+    transform: rotate(2deg);
+  }
+  .copy-title {
+    font-family: 'Noto Serif TC', serif;
+    font-size: 1.15rem;
+    color: var(--ink);
+    margin-bottom: 1rem;
+    text-align: center;
+    padding-top: 0.3rem;
+  }
+  .copy-preview {
+    background: var(--paper-dark);
+    border-radius: 3px;
+    padding: 0.7rem 1rem;
+    margin-bottom: 1rem;
+    font-size: 0.9rem;
+  }
+  .cp-row {
+    display: flex;
+    gap: 1rem;
+    padding: 0.2rem 0;
+    align-items: baseline;
+  }
+  .cp-label {
+    color: var(--ink-muted);
+    font-size: 0.8rem;
+    min-width: 3rem;
+    letter-spacing: 0.1em;
+  }
+  .cp-value {
+    color: var(--ink);
+    font-weight: 700;
+    font-size: 1rem;
+  }
+  .copy-steps {
+    background: #fffaf0;
+    border: 1px dashed var(--line);
+    border-radius: 3px;
+    padding: 0.7rem 0.9rem;
+    margin-bottom: 1rem;
+  }
+  .copy-steps .step {
+    display: flex;
+    align-items: center;
+    gap: 0.6rem;
+    font-size: 0.85rem;
+    color: var(--ink-soft);
+    padding: 0.25rem 0;
+    line-height: 1.5;
+  }
+  .copy-steps .step-num {
+    flex-shrink: 0;
+    width: 20px;
+    height: 20px;
+    border-radius: 50%;
+    background: var(--ink);
+    color: var(--paper);
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.7rem;
+    font-weight: 700;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+  .copy-steps kbd {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.8rem;
+    background: var(--paper-dark);
+    border: 1px solid var(--line);
+    border-radius: 2px;
+    padding: 1px 5px;
+    color: var(--ink);
+  }
+  .copy-actions {
+    display: flex;
+    gap: 0.5rem;
+  }
+  .copy-actions .btn { flex: 1; }
+
+  /* 書籤產生器 */
+  .bookmarklet-row {
+    display: flex;
+    align-items: center;
+    gap: 0.6rem;
+    padding: 0.6rem 0.8rem;
+    border: 1px solid var(--line);
+    border-radius: 3px;
+    margin-bottom: 0.5rem;
+    background: #fffcf5;
+  }
+  .bookmarklet-row .bm-info {
+    flex: 1;
+    min-width: 0;
+  }
+  .bookmarklet-row .bm-name {
+    font-family: 'Noto Serif TC', serif;
+    font-weight: 700;
+    font-size: 0.95rem;
+    color: var(--ink);
+  }
+  .bookmarklet-row .bm-hint {
+    font-size: 0.7rem;
+    color: var(--ink-muted);
+    margin-top: 2px;
+  }
+  .bm-btn {
+    display: inline-block;
+    padding: 0.5rem 0.9rem;
+    background: var(--btn-color);
+    color: white;
+    border-radius: 3px;
+    font-weight: 700;
+    font-size: 0.85rem;
+    text-decoration: none;
+    cursor: grab;
+    user-select: none;
+    white-space: nowrap;
+    border: 2px solid var(--btn-color);
+    transition: transform 0.1s;
+  }
+  .bm-btn:hover { transform: translateY(-1px); box-shadow: 0 2px 6px rgba(0,0,0,0.2); }
+  .bm-btn:active { cursor: grabbing; }
+  .bm-copy {
+    padding: 0.4rem 0.7rem;
+    border: 1px solid var(--line);
+    border-radius: 3px;
+    font-size: 0.75rem;
+    color: var(--ink-soft);
+    background: transparent;
+    white-space: nowrap;
+  }
+  .bm-copy:hover { background: var(--paper-dark); }
+
+  /* 設定面板的 tab */
+  .settings-tabs {
+    display: flex;
+    border-bottom: 1px solid var(--line);
+    margin-bottom: 1rem;
+    gap: 0;
+  }
+  .settings-tabs button {
+    flex: 1;
+    padding: 0.5rem;
+    font-size: 0.85rem;
+    color: var(--ink-muted);
+    border-bottom: 2px solid transparent;
+  }
+  .settings-tabs button.active {
+    color: var(--ink);
+    border-bottom-color: var(--moss);
+    font-weight: 700;
+  }
+  .settings-panel { display: none; }
+  .settings-panel.active { display: block; }
+
+  .person-edit {
+    padding: 0.8rem;
+    border: 1px solid var(--line);
+    border-radius: 3px;
+    margin-bottom: 0.6rem;
+    background: #fffcf5;
+  }
+  .person-edit-header {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    margin-bottom: 0.5rem;
+  }
+  .person-edit-header .dot {
+    width: 14px; height: 14px;
+    border-radius: 50%;
+  }
+  .person-edit-header strong {
+    font-family: 'Noto Serif TC', serif;
+  }
+
+  /* 響應式：手機 */
+  @media (max-width: 820px) {
+    .people-grid { grid-template-columns: repeat(2, 1fr); }
+    .lock-header h1 { font-size: 1.8rem; }
+    .person-card { min-height: 100px; }
+
+    .board { grid-template-columns: 1fr; }
+    .column { border-right: none; border-bottom: 1px solid var(--line); display: none; }
+    .column.active-col { display: flex; }
+
+    .mobile-tabs { display: flex; }
+    .summary-bar { font-size: 0.8rem; gap: 0.7rem; padding: 0.6rem 1rem; }
+    .topbar { padding: 0.8rem 1rem; }
+    .brand .subtitle { display: none; }
+    .tb-btn { padding: 0.4rem 0.6rem; font-size: 0.75rem; }
+
+    .captcha-cell { font-size: 1.4rem; }
+    .key { font-size: 1.5rem; }
+    .key.action { font-size: 0.75rem; }
+  }
+
+  @media (max-width: 400px) {
+    .people-grid { gap: 0.5rem; }
+    .person-card { padding: 0.6rem 0.3rem; min-height: 90px; }
+    .person-card .avatar { width: 32px; height: 32px; font-size: 1rem; }
+    .person-card .name { font-size: 0.85rem; }
+  }
+</style>
+</head>
+<body>
+
+<!-- ========== 登入鎖屏 ========== -->
+<div id="lockscreen">
+  <div class="lock-header">
+    <div class="stamp">HOUSEHOLD · 家庭</div>
+    <h1 class="serif">借閱手帳</h1>
+    <p>臺北市立圖書館 · 多帳號快速登入</p>
+  </div>
+
+  <div class="people-grid" id="peopleGrid"></div>
+
+  <div class="captcha-zone">
+    <div class="captcha-label">
+      <div style="font-size:0.78rem;color:var(--ink-muted);margin-bottom:0.5rem;letter-spacing:0.05em;line-height:1.5;">
+        ① 先到北市圖登入頁看驗證碼圖片<br>
+        ② 回這裡選家人 ③ 輸入 5 位驗證碼
+      </div>
+      輸入 <span class="current-person" id="curPersonLabel">—</span> 的 5 位驗證碼
+    </div>
+    <div class="captcha-display" id="captchaDisplay"></div>
+    <div class="keypad">
+      <button class="key" data-k="1">1</button>
+      <button class="key" data-k="2">2</button>
+      <button class="key" data-k="3">3</button>
+      <button class="key" data-k="4">4</button>
+      <button class="key" data-k="5">5</button>
+      <button class="key" data-k="6">6</button>
+      <button class="key" data-k="7">7</button>
+      <button class="key" data-k="8">8</button>
+      <button class="key" data-k="9">9</button>
+      <button class="key action back" data-k="back">⌫ 刪除</button>
+      <button class="key" data-k="0">0</button>
+      <button class="key action enter" data-k="enter">ENTER ↵</button>
+    </div>
+  </div>
+
+  <div class="lock-footer">
+    <button onclick="openLoginPage()">🔗 開啟北市圖</button>
+    <button onclick="openSettings()">⚙ 設定帳號</button>
+    <button onclick="openBookmarklets()">⭐ 產生快速登入書籤</button>
+    <button onclick="enterDashboard()">跳過登入 →</button>
+  </div>
+</div>
+
+<!-- ========== 主應用 ========== -->
+<div id="app">
+  <div class="topbar">
+    <div class="brand">
+      <div class="icon">閱</div>
+      <div>
+        <div class="title">家庭借閱手帳</div>
+        <div class="subtitle">FAMILY LIBRARY LEDGER</div>
+      </div>
+    </div>
+    <div class="topbar-actions">
+      <button class="tb-btn" onclick="openLoginPage()">北市圖 ↗</button>
+      <button class="tb-btn" onclick="openSettings()">⚙ 設定</button>
+      <button class="tb-btn" onclick="lockApp()">🔒</button>
+    </div>
+  </div>
+
+  <div class="summary-bar" id="summaryBar"></div>
+
+  <div class="mobile-tabs" id="mobileTabs"></div>
+
+  <div class="board" id="board"></div>
+</div>
+
+<!-- ========== 彈窗：新增/編輯書 ========== -->
+<div class="modal-backdrop" id="bookModal">
+  <div class="modal">
+    <h2 class="serif" id="bookModalTitle">新增書籍</h2>
+    <input type="hidden" id="bookEditId">
+    <input type="hidden" id="bookEditPerson">
+    <div class="field">
+      <label>書名</label>
+      <input type="text" id="bkTitle" placeholder="例：34個讓你豁然開朗的統計學小故事">
+    </div>
+    <div class="field row">
+      <div>
+        <label>借閱日</label>
+        <input type="date" id="bkLent">
+      </div>
+      <div>
+        <label>應還日 *</label>
+        <input type="date" id="bkDue">
+      </div>
+    </div>
+    <div class="field row">
+      <div>
+        <label>續借次數</label>
+        <select id="bkRenewed">
+          <option value="0">0 次（可續借）</option>
+          <option value="1">1 次（已到上限）</option>
+        </select>
+      </div>
+      <div>
+        <label>預約人數</label>
+        <input type="number" id="bkReserved" min="0" value="0">
+      </div>
+    </div>
+    <div class="field">
+      <label>備註（可選）</label>
+      <input type="text" id="bkNote" placeholder="例：延平分館">
+    </div>
+    <div class="modal-actions">
+      <button class="btn btn-ghost" onclick="closeBookModal()">取消</button>
+      <button class="btn btn-ghost danger" id="btnDeleteBook" onclick="deleteBook()" style="display:none;color:var(--rust);border-color:var(--rust);">刪除</button>
+      <button class="btn btn-primary" onclick="saveBook()">儲存</button>
+    </div>
+  </div>
+</div>
+
+<!-- ========== 彈窗：設定 ========== -->
+<div class="modal-backdrop" id="settingsModal">
+  <div class="modal" style="max-width:520px;">
+    <h2 class="serif">設定</h2>
+    <div class="settings-tabs">
+      <button class="active" data-tab="accounts">👥 帳號</button>
+      <button data-tab="data">💾 資料</button>
+    </div>
+
+    <div class="settings-panel active" data-panel="accounts">
+      <p style="font-size:0.8rem;color:var(--ink-muted);margin-bottom:0.8rem;">
+        帳密只儲存在此裝置（localStorage）。建議匯出 JSON 備份。
+      </p>
+      <div id="accountsList"></div>
+    </div>
+
+    <div class="settings-panel" data-panel="data">
+      <p style="font-size:0.8rem;color:var(--ink-muted);margin-bottom:1rem;">
+        所有資料（帳號、借閱紀錄）以 JSON 格式匯出／匯入。
+      </p>
+      <div style="display:flex;flex-direction:column;gap:0.5rem;">
+        <button class="btn btn-primary" onclick="exportJSON()" style="width:100%;">
+          📥 匯出全部資料（含帳密）
+        </button>
+        <label class="btn btn-ghost" style="width:100%;text-align:center;cursor:pointer;">
+          📤 匯入 JSON 檔案
+          <input type="file" accept=".json" onchange="importJSON(event)" style="display:none;">
+        </label>
+        <hr style="border:none;border-top:1px solid var(--line);margin:0.8rem 0;">
+        <button class="btn btn-ghost" onclick="clearAllBooks()" style="color:var(--rust);border-color:var(--rust);">
+          🗑 清空所有借閱紀錄
+        </button>
+        <button class="btn btn-ghost" onclick="resetAll()" style="color:var(--rust);border-color:var(--rust);">
+          ⚠ 完全重置（含帳號）
+        </button>
+      </div>
+    </div>
+
+    <div class="modal-actions">
+      <button class="btn btn-primary" onclick="closeSettings()">完成</button>
+    </div>
+  </div>
+</div>
+
+<!-- ========== 彈窗：書籤產生器 ========== -->
+<div class="modal-backdrop" id="bookmarkletModal">
+  <div class="modal" style="max-width:560px;">
+    <h2 class="serif">⭐ 一鍵登入書籤</h2>
+    <p style="font-size:0.85rem;color:var(--ink-soft);margin-bottom:0.8rem;line-height:1.6;">
+      把下面的按鈕 <strong>拖曳到瀏覽器書籤列</strong>。之後在北市圖登入頁點一下書籤，就會自動填入帳號密碼，你只需要手動輸入驗證碼。
+    </p>
+    <div style="background:#fffaf0;border:1px dashed var(--line);border-radius:3px;padding:0.7rem 0.9rem;margin-bottom:1rem;font-size:0.8rem;color:var(--ink-soft);line-height:1.7;">
+      <strong>使用步驟：</strong><br>
+      1. 桌機版 Chrome/Edge 按 <kbd style="font-family:monospace;background:var(--paper-dark);padding:1px 5px;border:1px solid var(--line);border-radius:2px;">Ctrl+Shift+B</kbd> 開啟書籤列<br>
+      2. 把下方藍色按鈕 <strong>直接拖到書籤列</strong><br>
+      3. 到北市圖首頁點「登入」開啟登入框<br>
+      4. 點書籤列的 ⭐爸爸 / ⭐媽媽 → 帳密秒填<br>
+      5. 肉眼看驗證碼輸入 → 按登入
+    </p>
+    <div id="bookmarkletList"></div>
+    <div style="margin-top:1rem;padding:0.7rem;background:var(--paper-dark);border-radius:3px;font-size:0.75rem;color:var(--ink-muted);line-height:1.5;">
+      ⚠ <strong>手機使用者</strong>：書籤在手機 Chrome/Safari 上要手動用網址列輸入書籤名稱觸發，比較麻煩。建議手機改用「複製帳密」按鈕（下方），用系統剪貼簿貼上。
+    </div>
+    <div class="modal-actions">
+      <button class="btn btn-primary" onclick="closeBookmarklets()">完成</button>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+/* ========================================================
+   資料模型
+   ======================================================== */
+const DEFAULT_DATA = {
+  people: [
+    { id: 'p1', name: '爸爸',   color: '#2d4a3e', cardNo: '', password: '' },
+    { id: 'p2', name: '媽媽',   color: '#7a3a52', cardNo: '', password: '' },
+    { id: 'p3', name: '老大',   color: '#3a5a7a', cardNo: '', password: '' },
+    { id: 'p4', name: '老二',   color: '#8a6a2a', cardNo: '', password: '' }
+  ],
+  books: []  // { id, personId, title, lentDate, dueDate, renewed, reserved, note }
+};
+
+const STORAGE_KEY = 'family_library_data_v1';
+let data = loadData();
+let captchaBuffer = '';
+let currentPersonId = null;
+let activeMobileCol = null;
+
+function loadData() {
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY);
+    if (raw) {
+      const parsed = JSON.parse(raw);
+      if (parsed.people && parsed.books) return parsed;
+    }
+  } catch(e) {}
+  return JSON.parse(JSON.stringify(DEFAULT_DATA));
+}
+
+function saveData() {
+  try {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
+  } catch(e) {
+    toast('儲存失敗：' + e.message);
+  }
+}
+
+/* ========================================================
+   鎖屏畫面
+   ======================================================== */
+function renderLockscreen() {
+  const grid = document.getElementById('peopleGrid');
+  grid.innerHTML = '';
+  data.people.forEach(p => {
+    const card = document.createElement('button');
+    card.className = 'person-card';
+    card.style.setProperty('--accent', p.color);
+    card.dataset.pid = p.id;
+    const initial = (p.name || '?').charAt(0);
+    const hasCred = p.cardNo && p.password;
+    card.innerHTML = `
+      <div class="check">✓</div>
+      <div class="avatar">${initial}</div>
+      <div>
+        <div class="name">${escapeHtml(p.name)}</div>
+        <div class="id">${hasCred ? '●●●●' + (p.cardNo.slice(-3) || '') : '未設定'}</div>
+      </div>
+    `;
+    card.onclick = () => selectPerson(p.id);
+    grid.appendChild(card);
+  });
+  renderCaptcha();
+  updateCurPersonLabel();
+}
+
+function selectPerson(pid) {
+  currentPersonId = pid;
+  captchaBuffer = '';
+  document.querySelectorAll('.person-card').forEach(c => {
+    c.classList.toggle('active', c.dataset.pid === pid);
+    const p = data.people.find(x => x.id === c.dataset.pid);
+    if (p) c.style.setProperty('--accent', p.color);
+  });
+  const p = data.people.find(x => x.id === pid);
+  document.documentElement.style.setProperty('--accent', p.color);
+  updateCurPersonLabel();
+  renderCaptcha();
+}
+
+function updateCurPersonLabel() {
+  const el = document.getElementById('curPersonLabel');
+  if (currentPersonId) {
+    const p = data.people.find(x => x.id === currentPersonId);
+    el.textContent = p.name;
+    el.style.color = p.color;
+  } else {
+    el.textContent = '先選擇一個人';
+    el.style.color = '';
+  }
+}
+
+function renderCaptcha() {
+  const disp = document.getElementById('captchaDisplay');
+  disp.innerHTML = '';
+  for (let i = 0; i < 5; i++) {
+    const cell = document.createElement('div');
+    cell.className = 'captcha-cell';
+    if (i < captchaBuffer.length) {
+      cell.classList.add('filled');
+      cell.textContent = captchaBuffer[i];
+    } else if (i === captchaBuffer.length) {
+      cell.classList.add('active');
+    }
+    disp.appendChild(cell);
+  }
+}
+
+function pressKey(k) {
+  if (k === 'back') {
+    captchaBuffer = captchaBuffer.slice(0, -1);
+    renderCaptcha();
+  } else if (k === 'enter') {
+    attemptLogin();
+  } else if (/^\d$/.test(k)) {
+    if (captchaBuffer.length < 5) {
+      captchaBuffer += k;
+      renderCaptcha();
+      // 不自動送出：打錯 3 次會被鎖 30 分，讓使用者確認後手動按 Enter
+    }
+  }
+}
+
+function attemptLogin() {
+  if (!currentPersonId) {
+    toast('請先選擇一個家人');
+    return;
+  }
+  if (captchaBuffer.length !== 5) {
+    toast('驗證碼需要 5 位數');
+    return;
+  }
+  const p = data.people.find(x => x.id === currentPersonId);
+
+  if (!p.cardNo || !p.password) {
+    toast(`${p.name} 尚未設定帳密，請先到「⚙ 設定」填入`);
+    return;
+  }
+
+  // 用 Tab 分隔：在北市圖帳號欄按 Ctrl+V 會自動跳欄填入三個欄位
+  const credText = `${p.cardNo}\t${p.password}\t${captchaBuffer}`;
+  copyToClipboard(credText);
+  showCopyOverlay(p, captchaBuffer);
+}
+
+function copyToClipboard(text) {
+  try {
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard.writeText(text);
+    } else {
+      const ta = document.createElement('textarea');
+      ta.value = text;
+      ta.style.position = 'fixed';
+      ta.style.opacity = '0';
+      document.body.appendChild(ta);
+      ta.select();
+      document.execCommand('copy');
+      ta.remove();
+    }
+  } catch(e) {}
+}
+
+// 複製成功後：顯示清楚的提示，告訴使用者下一步做什麼
+function showCopyOverlay(person, captcha) {
+  const existing = document.getElementById('copyOverlay');
+  if (existing) existing.remove();
+
+  const overlay = document.createElement('div');
+  overlay.id = 'copyOverlay';
+  overlay.innerHTML = `
+    <div class="copy-card" style="border-color:${person.color};">
+      <div class="copy-stamp" style="background:${person.color};">✓ 已複製</div>
+      <div class="copy-title">
+        <span style="color:${person.color};font-weight:700;">${escapeHtml(person.name)}</span> 的登入資料
+      </div>
+      <div class="copy-preview">
+        <div class="cp-row"><span class="cp-label">帳號</span><span class="cp-value mono">${escapeHtml(person.cardNo)}</span></div>
+        <div class="cp-row"><span class="cp-label">密碼</span><span class="cp-value mono">${'●'.repeat(person.password.length)}</span></div>
+        <div class="cp-row"><span class="cp-label">驗證</span><span class="cp-value mono" style="color:${person.color};">${captcha}</span></div>
+      </div>
+      <div style="background:#faeae5;border:1px solid var(--rust);border-radius:3px;padding:0.6rem 0.8rem;margin-bottom:0.8rem;font-size:0.78rem;color:var(--rust-dark);line-height:1.5;">
+        💡 <strong>更快的方法</strong>：回到鎖屏畫面，點「⭐ 產生快速登入書籤」，把書籤拖到瀏覽器書籤列，下次登入只要點書籤就自動填帳密！
+      </div>
+      <div class="copy-steps">
+        <div style="font-size:0.75rem;color:var(--ink-muted);margin-bottom:0.5rem;letter-spacing:0.05em;">複製的內容格式（帳號 + Tab + 密碼 + Tab + 驗證碼）：</div>
+        <div class="step"><span class="step-num">1</span>切到北市圖登入框</div>
+        <div class="step"><span class="step-num">2</span>點一下「帳號」欄位，按 <kbd>Ctrl</kbd>+<kbd>V</kbd></div>
+        <div class="step"><span class="step-num">3</span>若沒自動跳欄 → 手動點「密碼」欄 → 貼上密碼部分</div>
+        <div class="step"><span class="step-num">4</span>或者個別複製：</div>
+      </div>
+      <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:0.3rem;margin-bottom:1rem;">
+        <button class="btn btn-ghost" onclick="copyOne('${escapeHtml(person.cardNo)}','帳號')" style="font-size:0.8rem;padding:0.4rem;">複製帳號</button>
+        <button class="btn btn-ghost" onclick="copyOne('${escapeHtml(person.password).replace(/'/g,"\\'")}','密碼')" style="font-size:0.8rem;padding:0.4rem;">複製密碼</button>
+        <button class="btn btn-ghost" onclick="copyOne('${captcha}','驗證碼')" style="font-size:0.8rem;padding:0.4rem;">複製驗證碼</button>
+      </div>
+      <div class="copy-actions">
+        <button class="btn btn-ghost" onclick="closeCopyOverlay()">關閉</button>
+        <button class="btn btn-primary" onclick="enterDashboardAndClose()">進看板 →</button>
+      </div>
+    </div>
+  `;
+  document.body.appendChild(overlay);
+}
+
+function copyOne(text, label) {
+  copyToClipboard(text);
+  toast(`已複製${label}：${text.length > 10 ? text.slice(0,3) + '●●●' : text}`);
+}
+
+function closeCopyOverlay() {
+  const o = document.getElementById('copyOverlay');
+  if (o) o.remove();
+  captchaBuffer = '';
+  renderCaptcha();
+}
+
+function openLoginAndClose() {
+  window.open('https://book.tpml.edu.tw/', '_blank');
+  closeCopyOverlay();
+}
+
+function enterDashboardAndClose() {
+  closeCopyOverlay();
+  enterDashboard();
+}
+
+function enterDashboard() {
+  document.getElementById('lockscreen').style.display = 'none';
+  document.getElementById('app').style.display = 'block';
+  renderBoard();
+}
+
+function lockApp() {
+  document.getElementById('app').style.display = 'none';
+  document.getElementById('lockscreen').style.display = 'flex';
+  captchaBuffer = '';
+  renderCaptcha();
+}
+
+function openLoginPage() {
+  window.open('https://book.tpml.edu.tw/', '_blank');
+}
+
+/* ========================================================
+   主看板
+   ======================================================== */
+function renderBoard() {
+  const board = document.getElementById('board');
+  board.innerHTML = '';
+
+  data.people.forEach((p, idx) => {
+    const col = document.createElement('div');
+    col.className = 'column';
+    col.dataset.pid = p.id;
+    col.style.setProperty('--col-color', p.color);
+
+    const personBooks = data.books
+      .filter(b => b.personId === p.id)
+      .sort((a, b) => new Date(a.dueDate) - new Date(b.dueDate));
+
+    const header = document.createElement('div');
+    header.className = 'col-header';
+    header.innerHTML = `
+      <div class="col-name">${escapeHtml(p.name)}</div>
+      <div class="col-count"><span class="num">${personBooks.length}</span> 本</div>
+    `;
+    col.appendChild(header);
+
+    const list = document.createElement('div');
+    list.className = 'books-list';
+
+    if (personBooks.length === 0) {
+      const empty = document.createElement('div');
+      empty.className = 'empty-state';
+      empty.innerHTML = '<div class="empty-icon">📖</div>目前沒有借閱紀錄';
+      list.appendChild(empty);
+    } else {
+      personBooks.forEach(b => list.appendChild(renderBook(b)));
+    }
+
+    col.appendChild(list);
+
+    const addBtn = document.createElement('button');
+    addBtn.className = 'add-book';
+    addBtn.textContent = '＋ 新增一本書';
+    addBtn.onclick = () => openBookModal(null, p.id);
+    col.appendChild(addBtn);
+
+    board.appendChild(col);
+  });
+
+  renderSummary();
+  renderMobileTabs();
+}
+
+function renderBook(b) {
+  const daysLeft = daysDiff(new Date(), new Date(b.dueDate));
+  const el = document.createElement('div');
+  el.className = 'book';
+  if (daysLeft <= 0) el.classList.add('urgent');
+  else if (daysLeft <= 3) el.classList.add('soon');
+
+  const dueStr = formatDate(b.dueDate);
+  const daysLabel = daysLeft < 0
+    ? `逾期 ${Math.abs(daysLeft)} 天`
+    : daysLeft === 0 ? '今天到期'
+    : `剩 ${daysLeft} 天`;
+
+  const canRenew = (b.renewed || 0) === 0 && (b.reserved || 0) === 0 && daysLeft >= 0;
+
+  let flagsHtml = '<div class="book-flags">';
+  if ((b.renewed || 0) >= 1) {
+    flagsHtml += '<span class="flag cant-renew">❌ 已續過，不能再續</span>';
+  } else if ((b.reserved || 0) > 0) {
+    flagsHtml += `<span class="flag reserved">⚠ ${b.reserved} 人預約，不能續借</span>`;
+  } else if (daysLeft < 0) {
+    flagsHtml += '<span class="flag cant-renew">⚠ 已逾期，需先歸還</span>';
+  } else {
+    flagsHtml += '<span class="flag renewed" style="color:var(--sage);border-color:var(--sage);">✓ 可續借</span>';
+  }
+  flagsHtml += '</div>';
+
+  el.innerHTML = `
+    <div class="book-title">${escapeHtml(b.title || '未命名')}</div>
+    <div class="book-meta">
+      <span class="book-due">📅 ${dueStr}</span>
+      <span class="book-days">${daysLabel}</span>
+      ${b.note ? `<span style="font-size:0.7rem;">· ${escapeHtml(b.note)}</span>` : ''}
+    </div>
+    ${flagsHtml}
+    <div class="book-actions">
+      <button onclick='openBookModal(${JSON.stringify(b.id)}, ${JSON.stringify(b.personId)})'>✏ 編輯</button>
+      <button onclick='markRenewed(${JSON.stringify(b.id)})'>🔄 已續借</button>
+      <button onclick='markReturned(${JSON.stringify(b.id)})'>✓ 已歸還</button>
+    </div>
+  `;
+  return el;
+}
+
+function renderSummary() {
+  const bar = document.getElementById('summaryBar');
+  const total = data.books.length;
+  const overdue = data.books.filter(b => daysDiff(new Date(), new Date(b.dueDate)) < 0).length;
+  const today = data.books.filter(b => daysDiff(new Date(), new Date(b.dueDate)) === 0).length;
+  const soon = data.books.filter(b => {
+    const d = daysDiff(new Date(), new Date(b.dueDate));
+    return d > 0 && d <= 3;
+  }).length;
+
+  bar.innerHTML = `
+    <div class="summary-item"><strong>📚 全家共 ${total} 本</strong></div>
+    ${overdue > 0 ? `<div class="summary-item overdue">🚨 ${overdue} 本逾期</div>` : ''}
+    ${today > 0 ? `<div class="summary-item overdue">⏰ ${today} 本今天到期</div>` : ''}
+    ${soon > 0 ? `<div class="summary-item soon">⚠ ${soon} 本 3 天內到期</div>` : ''}
+    ${(overdue + today + soon) === 0 && total > 0 ? `<div class="summary-item" style="color:var(--sage);">✓ 都還很久，可以安心</div>` : ''}
+    <div class="summary-item" style="margin-left:auto;color:var(--ink-muted);font-size:0.75rem;">更新於 ${formatDate(new Date())}</div>
+  `;
+}
+
+function renderMobileTabs() {
+  const tabs = document.getElementById('mobileTabs');
+  tabs.innerHTML = '';
+  if (!activeMobileCol) activeMobileCol = data.people[0].id;
+
+  data.people.forEach(p => {
+    const btn = document.createElement('button');
+    btn.className = 'mtab' + (p.id === activeMobileCol ? ' active' : '');
+    const count = data.books.filter(b => b.personId === p.id).length;
+    btn.innerHTML = `${escapeHtml(p.name)} <span class="mtab-count">${count}</span>`;
+    btn.onclick = () => {
+      activeMobileCol = p.id;
+      renderMobileTabs();
+      updateMobileView();
+    };
+    tabs.appendChild(btn);
+  });
+  updateMobileView();
+}
+
+function updateMobileView() {
+  document.querySelectorAll('.column').forEach(col => {
+    col.classList.toggle('active-col', col.dataset.pid === activeMobileCol);
+  });
+}
+
+/* ========================================================
+   書籍 CRUD
+   ======================================================== */
+function openBookModal(bookId, personId) {
+  document.getElementById('bookModal').classList.add('show');
+  document.getElementById('bookEditId').value = bookId || '';
+  document.getElementById('bookEditPerson').value = personId || '';
+
+  const delBtn = document.getElementById('btnDeleteBook');
+
+  if (bookId) {
+    const b = data.books.find(x => x.id === bookId);
+    const p = data.people.find(x => x.id === b.personId);
+    document.getElementById('bookModalTitle').textContent = `編輯：${p.name} 的書`;
+    document.getElementById('bkTitle').value = b.title || '';
+    document.getElementById('bkLent').value = b.lentDate || '';
+    document.getElementById('bkDue').value = b.dueDate || '';
+    document.getElementById('bkRenewed').value = b.renewed || 0;
+    document.getElementById('bkReserved').value = b.reserved || 0;
+    document.getElementById('bkNote').value = b.note || '';
+    delBtn.style.display = 'inline-block';
+  } else {
+    const p = data.people.find(x => x.id === personId);
+    document.getElementById('bookModalTitle').textContent = `${p.name}：新增一本書`;
+    document.getElementById('bkTitle').value = '';
+    document.getElementById('bkLent').value = todayStr();
+    // 預設到期日為今天 + 30 天
+    const due = new Date();
+    due.setDate(due.getDate() + 30);
+    document.getElementById('bkDue').value = dateToInputStr(due);
+    document.getElementById('bkRenewed').value = 0;
+    document.getElementById('bkReserved').value = 0;
+    document.getElementById('bkNote').value = '';
+    delBtn.style.display = 'none';
+  }
+  setTimeout(() => document.getElementById('bkTitle').focus(), 50);
+}
+
+function closeBookModal() {
+  document.getElementById('bookModal').classList.remove('show');
+}
+
+function saveBook() {
+  const id = document.getElementById('bookEditId').value;
+  const personId = document.getElementById('bookEditPerson').value;
+  const title = document.getElementById('bkTitle').value.trim();
+  const dueDate = document.getElementById('bkDue').value;
+
+  if (!title) { toast('請輸入書名'); return; }
+  if (!dueDate) { toast('請選擇應還日'); return; }
+
+  const book = {
+    id: id || 'b_' + Date.now() + '_' + Math.random().toString(36).slice(2, 6),
+    personId,
+    title,
+    lentDate: document.getElementById('bkLent').value,
+    dueDate,
+    renewed: parseInt(document.getElementById('bkRenewed').value) || 0,
+    reserved: parseInt(document.getElementById('bkReserved').value) || 0,
+    note: document.getElementById('bkNote').value.trim()
+  };
+
+  if (id) {
+    const idx = data.books.findIndex(x => x.id === id);
+    data.books[idx] = book;
+    toast('已更新');
+  } else {
+    data.books.push(book);
+    toast('已新增');
+  }
+  saveData();
+  closeBookModal();
+  renderBoard();
+}
+
+function deleteBook() {
+  const id = document.getElementById('bookEditId').value;
+  if (!id) return;
+  if (!confirm('確定要刪除這本書？')) return;
+  data.books = data.books.filter(x => x.id !== id);
+  saveData();
+  closeBookModal();
+  renderBoard();
+  toast('已刪除');
+}
+
+function markRenewed(bookId) {
+  const b = data.books.find(x => x.id === bookId);
+  if (!b) return;
+  if ((b.renewed || 0) >= 1) {
+    toast('已達續借上限，無法再續');
+    return;
+  }
+  b.renewed = 1;
+  // 續借後延後 30 天
+  const newDue = new Date(b.dueDate);
+  newDue.setDate(newDue.getDate() + 30);
+  b.dueDate = dateToInputStr(newDue);
+  saveData();
+  renderBoard();
+  toast(`已標記為續借，新到期日：${formatDate(b.dueDate)}`);
+}
+
+function markReturned(bookId) {
+  if (!confirm('確定已歸還這本書？將從清單移除')) return;
+  data.books = data.books.filter(x => x.id !== bookId);
+  saveData();
+  renderBoard();
+  toast('已歸還');
+}
+
+/* ========================================================
+   設定 / 帳號
+   ======================================================== */
+function openSettings() {
+  document.getElementById('settingsModal').classList.add('show');
+  renderAccounts();
+}
+
+function closeSettings() {
+  saveAccountsFromForm();
+  document.getElementById('settingsModal').classList.remove('show');
+  renderLockscreen();
+}
+
+/* ========================================================
+   書籤產生器 - 一鍵自動填入北市圖帳密
+   ======================================================== */
+function openBookmarklets() {
+  document.getElementById('bookmarkletModal').classList.add('show');
+  renderBookmarklets();
+}
+
+function closeBookmarklets() {
+  document.getElementById('bookmarkletModal').classList.remove('show');
+}
+
+// 產生書籤小工具的 JS 代碼
+function buildBookmarkletCode(cardNo, password, personName) {
+  // 這段 JS 會在北市圖登入頁執行：找到欄位 → 填入值 → 觸發 input/change 事件 → 自動 focus 驗證碼欄
+  const code = `(function(){
+    var u=document.getElementById('username');
+    var p=document.getElementById('password');
+    var c=document.getElementById('captchaLabel');
+    if(!u||!p){alert('找不到登入欄位，請確認已開啟北市圖登入框');return;}
+    function fill(el,val){
+      var setter=Object.getOwnPropertyDescriptor(window.HTMLInputElement.prototype,'value').set;
+      setter.call(el,val);
+      el.dispatchEvent(new Event('input',{bubbles:true}));
+      el.dispatchEvent(new Event('change',{bubbles:true}));
+    }
+    fill(u,${JSON.stringify(cardNo)});
+    fill(p,${JSON.stringify(password)});
+    if(c){c.focus();c.select();}
+    var n=document.createElement('div');
+    n.textContent='✓ 已填入 ${personName.replace(/'/g, "")} 的帳密，請輸入驗證碼';
+    n.style.cssText='position:fixed;top:20px;left:50%;transform:translateX(-50%);background:#2d4a3e;color:#fff;padding:10px 20px;border-radius:4px;z-index:99999;font-weight:bold;box-shadow:0 4px 12px rgba(0,0,0,0.3)';
+    document.body.appendChild(n);
+    setTimeout(function(){n.remove();},3000);
+  })();`;
+  return 'javascript:' + encodeURIComponent(code.replace(/\s+/g, ' ').trim());
+}
+
+function renderBookmarklets() {
+  const list = document.getElementById('bookmarkletList');
+  list.innerHTML = '';
+  data.people.forEach(p => {
+    if (!p.cardNo || !p.password) {
+      const row = document.createElement('div');
+      row.className = 'bookmarklet-row';
+      row.style.opacity = '0.5';
+      row.innerHTML = `
+        <div class="bm-info">
+          <div class="bm-name">${escapeHtml(p.name)}</div>
+          <div class="bm-hint" style="color:var(--rust);">⚠ 尚未填帳密，先到「⚙ 設定帳號」填入</div>
+        </div>
+      `;
+      list.appendChild(row);
+      return;
+    }
+    const href = buildBookmarkletCode(p.cardNo, p.password, p.name);
+    const row = document.createElement('div');
+    row.className = 'bookmarklet-row';
+    row.innerHTML = `
+      <div class="bm-info">
+        <div class="bm-name">${escapeHtml(p.name)}</div>
+        <div class="bm-hint">拖曳右側按鈕 → 放到書籤列</div>
+      </div>
+      <a class="bm-btn" style="--btn-color:${p.color};" draggable="true">⭐ 登入 ${escapeHtml(p.name)}</a>
+      <button class="bm-copy" data-person="${p.id}">📋 複製帳密</button>
+    `;
+    // 設定 href 屬性（用 setAttribute 避免瀏覽器阻擋 javascript: 協議的拖曳）
+    const link = row.querySelector('.bm-btn');
+    link.setAttribute('href', href);
+    link.addEventListener('click', e => {
+      e.preventDefault();
+      toast('請把這個按鈕拖到書籤列（不要點擊）');
+    });
+    row.querySelector('.bm-copy').addEventListener('click', () => {
+      copyToClipboard(`${p.cardNo}\t${p.password}`);
+      toast(`已複製 ${p.name} 的帳號和密碼（Tab 分隔）`);
+    });
+    list.appendChild(row);
+  });
+}
+
+function renderAccounts() {
+  const list = document.getElementById('accountsList');
+  list.innerHTML = '';
+  data.people.forEach(p => {
+    const div = document.createElement('div');
+    div.className = 'person-edit';
+    div.innerHTML = `
+      <div class="person-edit-header">
+        <div class="dot" style="background:${p.color}"></div>
+        <strong class="serif">${escapeHtml(p.name)}</strong>
+      </div>
+      <div class="field" style="margin-bottom:0.5rem;">
+        <label>暱稱</label>
+        <input type="text" data-pid="${p.id}" data-k="name" value="${escapeHtml(p.name)}">
+      </div>
+      <div class="field row" style="margin-bottom:0.5rem;">
+        <div>
+          <label>借書證號</label>
+          <input type="text" data-pid="${p.id}" data-k="cardNo" value="${escapeHtml(p.cardNo)}" placeholder="借書證號碼">
+        </div>
+        <div>
+          <label>密碼</label>
+          <input type="password" data-pid="${p.id}" data-k="password" value="${escapeHtml(p.password)}" placeholder="密碼">
+        </div>
+      </div>
+      <div class="field" style="margin-bottom:0;">
+        <label>主題色</label>
+        <input type="color" data-pid="${p.id}" data-k="color" value="${p.color}" style="width:60px;height:32px;padding:2px;">
+      </div>
+    `;
+    list.appendChild(div);
+  });
+
+  // tab 切換
+  document.querySelectorAll('.settings-tabs button').forEach(b => {
+    b.onclick = () => {
+      document.querySelectorAll('.settings-tabs button').forEach(x => x.classList.remove('active'));
+      document.querySelectorAll('.settings-panel').forEach(x => x.classList.remove('active'));
+      b.classList.add('active');
+      document.querySelector(`.settings-panel[data-panel="${b.dataset.tab}"]`).classList.add('active');
+    };
+  });
+}
+
+function saveAccountsFromForm() {
+  document.querySelectorAll('#accountsList input').forEach(input => {
+    const pid = input.dataset.pid;
+    const k = input.dataset.k;
+    if (!pid || !k) return;
+    const p = data.people.find(x => x.id === pid);
+    if (p) p[k] = input.value;
+  });
+  saveData();
+}
+
+/* ========================================================
+   匯出/匯入
+   ======================================================== */
+function exportJSON() {
+  saveAccountsFromForm();
+  const payload = {
+    _meta: {
+      app: 'FamilyLibraryLedger',
+      version: 1,
+      exportedAt: new Date().toISOString()
+    },
+    data: data
+  };
+  const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  const ts = new Date().toISOString().slice(0, 10);
+  a.download = `family_library_${ts}.json`;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+  toast('已匯出 JSON 檔');
+}
+
+function importJSON(evt) {
+  const file = evt.target.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = e => {
+    try {
+      const parsed = JSON.parse(e.target.result);
+      const d = parsed.data || parsed;
+      if (!d.people || !d.books) throw new Error('格式錯誤');
+      if (!confirm('這將覆蓋目前所有資料，確定匯入？')) return;
+      data = d;
+      saveData();
+      renderAccounts();
+      renderBoard();
+      renderLockscreen();
+      toast('匯入成功');
+    } catch(err) {
+      toast('匯入失敗：' + err.message);
+    }
+  };
+  reader.readAsText(file);
+  evt.target.value = '';
+}
+
+function clearAllBooks() {
+  if (!confirm('確定清空所有家人的借閱紀錄？帳號會保留')) return;
+  data.books = [];
+  saveData();
+  renderBoard();
+  toast('已清空借閱紀錄');
+}
+
+function resetAll() {
+  if (!confirm('完全重置將刪除帳號和所有資料，確定？')) return;
+  if (!confirm('真的確定？這無法復原')) return;
+  localStorage.removeItem(STORAGE_KEY);
+  data = JSON.parse(JSON.stringify(DEFAULT_DATA));
+  saveData();
+  closeSettings();
+  renderLockscreen();
+  toast('已完全重置');
+}
+
+/* ========================================================
+   工具
+   ======================================================== */
+function daysDiff(from, to) {
+  const f = new Date(from.getFullYear(), from.getMonth(), from.getDate());
+  const t = new Date(to.getFullYear ? to.getFullYear() : new Date(to).getFullYear(),
+                    to.getMonth ? to.getMonth() : new Date(to).getMonth(),
+                    to.getDate ? to.getDate() : new Date(to).getDate());
+  return Math.round((t - f) / 86400000);
+}
+
+function formatDate(d) {
+  const date = typeof d === 'string' ? new Date(d) : d;
+  if (isNaN(date)) return '—';
+  const m = date.getMonth() + 1;
+  const day = date.getDate();
+  return `${date.getFullYear()}/${m}/${day}`;
+}
+
+function dateToInputStr(d) {
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, '0');
+  const day = String(d.getDate()).padStart(2, '0');
+  return `${y}-${m}-${day}`;
+}
+
+function todayStr() {
+  return dateToInputStr(new Date());
+}
+
+function escapeHtml(s) {
+  if (s == null) return '';
+  return String(s).replace(/[&<>"']/g, c => ({
+    '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'
+  })[c]);
+}
+
+function toast(msg) {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.classList.add('show');
+  clearTimeout(toast._timer);
+  toast._timer = setTimeout(() => t.classList.remove('show'), 2500);
+}
+
+/* ========================================================
+   事件綁定
+   ======================================================== */
+document.querySelectorAll('.key').forEach(btn => {
+  btn.addEventListener('click', e => {
+    e.preventDefault();
+    pressKey(btn.dataset.k);
+  });
+});
+
+// 實體鍵盤也能用
+document.addEventListener('keydown', e => {
+  if (document.getElementById('lockscreen').style.display === 'none') return;
+  if (document.getElementById('settingsModal').classList.contains('show')) return;
+  if (document.getElementById('bookModal').classList.contains('show')) return;
+
+  if (/^\d$/.test(e.key)) pressKey(e.key);
+  else if (e.key === 'Backspace') pressKey('back');
+  else if (e.key === 'Enter') pressKey('enter');
+});
+
+// 點背景關閉彈窗
+document.getElementById('bookModal').addEventListener('click', e => {
+  if (e.target.id === 'bookModal') closeBookModal();
+});
+document.getElementById('settingsModal').addEventListener('click', e => {
+  if (e.target.id === 'settingsModal') closeSettings();
+});
+
+// 初始化
+renderLockscreen();
+if (data.people.length > 0) selectPerson(data.people[0].id);
+</script>
+</body>
+</html>
