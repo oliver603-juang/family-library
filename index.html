@@ -1010,6 +1010,52 @@
   }
   .bm-copy:hover { background: var(--paper-dark); }
 
+  /* 兩個書籤按鈕垂直堆疊 */
+  .bm-row-v2 { align-items: stretch; }
+  .bm-btns-stack {
+    display: flex;
+    flex-direction: column;
+    gap: 0.4rem;
+    flex-shrink: 0;
+  }
+  .bm-btns-stack .bm-btn {
+    text-align: center;
+    font-size: 0.8rem;
+    padding: 0.45rem 0.7rem;
+  }
+  .bm-btn-export {
+    background: transparent !important;
+    color: var(--btn-color) !important;
+    border: 2px solid var(--btn-color) !important;
+  }
+
+  /* 從剪貼簿匯入區塊 */
+  .import-row {
+    background: linear-gradient(135deg, #fffcf5 0%, #f4ede0 100%);
+    border: 2px solid var(--moss);
+    border-radius: 6px;
+    padding: 0.9rem 1rem;
+    margin-bottom: 1rem;
+  }
+  .import-header {
+    font-family: 'Noto Serif TC', serif;
+    font-weight: 700;
+    font-size: 1rem;
+    color: var(--moss);
+    margin-bottom: 0.3rem;
+  }
+  .import-hint {
+    font-size: 0.78rem;
+    color: var(--ink-soft);
+    margin-bottom: 0.7rem;
+    line-height: 1.5;
+  }
+  .import-btn {
+    width: 100%;
+    padding: 0.6rem;
+    font-size: 0.9rem;
+  }
+
   /* 設定面板的 tab */
   .settings-tabs {
     display: flex;
@@ -1274,21 +1320,23 @@
 <!-- ========== 彈窗：書籤產生器 ========== -->
 <div class="modal-backdrop" id="bookmarkletModal">
   <div class="modal" style="max-width:560px;">
-    <h2 class="serif">⭐ 一鍵登入書籤</h2>
+    <h2 class="serif">⭐ 一鍵登入書籤 + 📥 借閱同步</h2>
     <p style="font-size:0.85rem;color:var(--ink-soft);margin-bottom:0.8rem;line-height:1.6;">
-      把下面的按鈕 <strong>拖曳到瀏覽器書籤列</strong>。之後在北市圖登入頁點一下書籤，就會自動填入帳號密碼，你只需要手動輸入驗證碼。
+      每個家人有 <strong>兩個書籤</strong>：<br>
+      <span style="color:var(--moss);font-weight:700;">⭐ 登入</span>：在北市圖首頁點，自動填帳密<br>
+      <span style="color:var(--moss);font-weight:700;">📥 匯出</span>：登入後點，把借閱紀錄複製到剪貼簿<br>
+      複製完後回到看板，點下方「📋 從剪貼簿匯入」就能自動填入書單。
     </p>
     <div style="background:#fffaf0;border:1px dashed var(--line);border-radius:3px;padding:0.7rem 0.9rem;margin-bottom:1rem;font-size:0.8rem;color:var(--ink-soft);line-height:1.7;">
-      <strong>使用步驟：</strong><br>
-      1. 桌機版 Chrome/Edge 按 <kbd style="font-family:monospace;background:var(--paper-dark);padding:1px 5px;border:1px solid var(--line);border-radius:2px;">Ctrl+Shift+B</kbd> 開啟書籤列<br>
-      2. 把下方藍色按鈕 <strong>直接拖到書籤列</strong><br>
-      3. 到北市圖首頁點「登入」開啟登入框<br>
-      4. 點書籤列的 ⭐爸爸 / ⭐媽媽 → 帳密秒填<br>
-      5. 肉眼看驗證碼輸入 → 按登入
-    </p>
+      <strong>完整流程：</strong><br>
+      1. 把下方按鈕 <strong>拖到書籤列</strong>（Ctrl+Shift+B 可顯示書籤列）<br>
+      2. 打開北市圖 → 點「⭐ 登入 爸爸」→ 填驗證碼 → 登入<br>
+      3. 點「📥 匯出 爸爸」→ 自動跳到借閱頁並複製資料<br>
+      4. 切回看板 → 點「📋 從剪貼簿匯入」→ 爸爸的書單自動填好 ✓
+    </div>
     <div id="bookmarkletList"></div>
     <div style="margin-top:1rem;padding:0.7rem;background:var(--paper-dark);border-radius:3px;font-size:0.75rem;color:var(--ink-muted);line-height:1.5;">
-      ⚠ <strong>手機使用者</strong>：書籤在手機 Chrome/Safari 上要手動用網址列輸入書籤名稱觸發，比較麻煩。建議手機改用「複製帳密」按鈕（下方），用系統剪貼簿貼上。
+      ⚠ <strong>手機使用者</strong>：書籤在手機 Chrome/Safari 上觸發比較麻煩。建議改用登入彈窗的「複製帳號/密碼/驗證碼」大按鈕。
     </div>
     <div class="modal-actions">
       <button class="btn btn-primary" onclick="closeBookmarklets()">完成</button>
@@ -1893,9 +1941,34 @@ function buildBookmarkletCode(cardNo, password, personName) {
   return 'javascript:' + encodeURIComponent(code);
 }
 
+// 匯出借閱書籤：極簡版——只抓頁面文字複製到剪貼簿，解析邏輯放手帳
+// 這樣書籤短而穩定，解析邏輯可以隨時改進不用重新產生書籤
+function buildExporterBookmarklet(personId, personName) {
+  const pid = JSON.stringify(personId);
+  const LIST_URL = 'https://book.tpml.edu.tw/personal/list?action=getLendFile&form=QueryForm';
+  const LIST_URL_STR = JSON.stringify(LIST_URL);
+  // 書籤功能：
+  // 1) 若不在借閱頁就跳過去
+  // 2) 抓頁面所有文字 + 加上 personId 標頭
+  // 3) 複製到剪貼簿
+  const code = `(function(){function T(m,c){var d=document.createElement('div');d.textContent=m;d.style.cssText='position:fixed;top:20px;left:50%;transform:translateX(-50%);background:'+c+';color:#fff;padding:10px 18px;border-radius:4px;z-index:99999;font-weight:bold';document.body.appendChild(d);setTimeout(function(){d.remove()},3000)}if(!/tpml\\.edu\\.tw/.test(location.host)){T('\\u8acb\\u5230\\u5317\\u5e02\\u5716','#a83c2a');return}if(!/personal\\/list/.test(location.pathname)){T('\\u8df3\\u5230\\u501f\\u95b1\\u9801','#2d4a3e');location.href=${LIST_URL_STR};return}if(document.getElementById('username')){T('\\u5c1a\\u672a\\u767b\\u5165','#a83c2a');return}var body=document.body.innerText||document.body.textContent;var payload='FAMILY_LIBRARY_EXPORT\\nperson:'+${pid}+'\\n---\\n'+body;function copy(t){if(navigator.clipboard)return navigator.clipboard.writeText(t);var ta=document.createElement('textarea');ta.value=t;document.body.appendChild(ta);ta.select();document.execCommand('copy');ta.remove();return Promise.resolve()}copy(payload).then(function(){T('\\u2713 \\u5df2\\u8907\\u88fd\\uff0c\\u56de\\u624b\\u5e33\\u532f\\u5165','#2d4a3e')}).catch(function(){T('\\u8907\\u88fd\\u5931\\u6557','#a83c2a')})})();`;
+  return 'javascript:' + encodeURIComponent(code);
+}
+
 function renderBookmarklets() {
   const list = document.getElementById('bookmarkletList');
   list.innerHTML = '';
+
+  // 頂部提示：新增的匯入按鈕
+  const importRow = document.createElement('div');
+  importRow.className = 'import-row';
+  importRow.innerHTML = `
+    <div class="import-header">📥 從剪貼簿匯入借閱紀錄</div>
+    <div class="import-hint">在北市圖借閱頁點「📥 匯出」書籤後，回來點這顆按鈕就能自動填入書單</div>
+    <button class="btn btn-primary import-btn" onclick="importFromClipboard()">📋 從剪貼簿匯入</button>
+  `;
+  list.appendChild(importRow);
+
   data.people.forEach(p => {
     if (!p.cardNo || !p.password) {
       const row = document.createElement('div');
@@ -1910,30 +1983,239 @@ function renderBookmarklets() {
       list.appendChild(row);
       return;
     }
-    const href = buildBookmarkletCode(p.cardNo, p.password, p.name);
+    const loginHref = buildBookmarkletCode(p.cardNo, p.password, p.name);
+    const exportHref = buildExporterBookmarklet(p.id, p.name);
+
     const row = document.createElement('div');
-    row.className = 'bookmarklet-row';
+    row.className = 'bookmarklet-row bm-row-v2';
     row.innerHTML = `
       <div class="bm-info">
-        <div class="bm-name">${escapeHtml(p.name)}</div>
-        <div class="bm-hint">拖曳右側按鈕 → 放到書籤列</div>
+        <div class="bm-name" style="color:${p.color};">${escapeHtml(p.name)}</div>
+        <div class="bm-hint">兩個書籤各自拖到書籤列</div>
       </div>
-      <a class="bm-btn" style="--btn-color:${p.color};" draggable="true">⭐ 登入 ${escapeHtml(p.name)}</a>
-      <button class="bm-copy" data-person="${p.id}">📋 複製帳密</button>
+      <div class="bm-btns-stack">
+        <a class="bm-btn bm-btn-login" style="--btn-color:${p.color};" draggable="true">⭐ 登入 ${escapeHtml(p.name)}</a>
+        <a class="bm-btn bm-btn-export" style="--btn-color:${p.color};" draggable="true">📥 匯出 ${escapeHtml(p.name)}</a>
+      </div>
     `;
-    // 設定 href 屬性（用 setAttribute 避免瀏覽器阻擋 javascript: 協議的拖曳）
-    const link = row.querySelector('.bm-btn');
-    link.setAttribute('href', href);
-    link.addEventListener('click', e => {
+    const loginLink = row.querySelector('.bm-btn-login');
+    loginLink.setAttribute('href', loginHref);
+    loginLink.addEventListener('click', e => {
       e.preventDefault();
-      toast('請把這個按鈕拖到書籤列（不要點擊）');
+      toast('請拖曳此按鈕到書籤列（不要點擊）');
     });
-    row.querySelector('.bm-copy').addEventListener('click', () => {
-      copyToClipboard(`${p.cardNo}\t${p.password}`);
-      toast(`已複製 ${p.name} 的帳號和密碼（Tab 分隔）`);
+
+    const exportLink = row.querySelector('.bm-btn-export');
+    exportLink.setAttribute('href', exportHref);
+    exportLink.addEventListener('click', e => {
+      e.preventDefault();
+      toast('請拖曳此按鈕到書籤列（不要點擊）');
     });
+
     list.appendChild(row);
   });
+}
+
+// 從剪貼簿匯入借閱資料
+// 支援兩種格式：
+//   1) "FAMILY_LIBRARY_EXPORT\nperson:p1\n---\n{頁面純文字}"  (新格式，書籤抓的原始文字)
+//   2) {personId, books: [...]}  (舊 JSON 格式，向後相容)
+async function importFromClipboard() {
+  let text;
+  try {
+    text = await navigator.clipboard.readText();
+  } catch (e) {
+    toast('無法讀取剪貼簿，請授權瀏覽器讀取剪貼簿');
+    return;
+  }
+  if (!text || !text.trim()) {
+    toast('剪貼簿是空的');
+    return;
+  }
+
+  let personId, books;
+
+  if (text.startsWith('FAMILY_LIBRARY_EXPORT')) {
+    const lines = text.split('\n');
+    const personLine = lines[1] || '';
+    const personMatch = personLine.match(/^person:"?([^"]+)"?$/);
+    if (!personMatch) {
+      toast('匯出資料格式錯誤');
+      return;
+    }
+    personId = personMatch[1].replace(/^"|"$/g, '');
+    const sepIdx = text.indexOf('\n---\n');
+    const rawText = sepIdx >= 0 ? text.slice(sepIdx + 5) : '';
+    books = parseBorrowList(rawText);
+  } else {
+    try {
+      const payload = JSON.parse(text);
+      if (!payload.personId || !Array.isArray(payload.books)) throw new Error();
+      personId = payload.personId;
+      books = payload.books;
+    } catch (e) {
+      toast('剪貼簿不是匯入資料，先在北市圖點「📥 匯出」書籤');
+      return;
+    }
+  }
+
+  if (!books || books.length === 0) {
+    toast('沒有找到借閱紀錄（可能是借閱頁沒資料或解析失敗）');
+    return;
+  }
+
+  const person = data.people.find(p => p.id === personId);
+  if (!person) {
+    toast('找不到對應的家人（personId: ' + personId + '）');
+    return;
+  }
+
+  const existingCount = data.books.filter(b => b.personId === personId).length;
+
+  const msg = `找到 ${person.name} 的 ${books.length} 本借閱紀錄：\n\n` +
+              books.slice(0, 5).map((b, i) => `${i+1}. ${b.title.slice(0, 30)} (${b.dueDate})`).join('\n') +
+              (books.length > 5 ? `\n...等共 ${books.length} 本` : '') + '\n\n' +
+              `目前 ${person.name} 看板上有 ${existingCount} 本舊資料。\n\n` +
+              `【確定】= 覆蓋（清掉舊的，只留新的）\n` +
+              `【取消】= 合併（舊的保留，以書名比對更新）`;
+  const overwrite = confirm(msg);
+
+  if (overwrite) {
+    data.books = data.books.filter(b => b.personId !== personId);
+  }
+
+  let added = 0, updated = 0;
+  books.forEach(b => {
+    if (!b.title || !b.dueDate) return;
+    const existing = !overwrite && data.books.find(
+      x => x.personId === personId && x.title === b.title
+    );
+    if (existing) {
+      existing.dueDate = b.dueDate;
+      existing.lentDate = b.lentDate || existing.lentDate;
+      existing.renewed = b.renewed || 0;
+      existing.reserved = b.reserved || 0;
+      existing.note = b.note || existing.note;
+      updated++;
+    } else {
+      data.books.push({
+        id: 'b_' + Date.now() + '_' + Math.random().toString(36).slice(2, 6),
+        personId: personId,
+        title: b.title,
+        dueDate: b.dueDate,
+        lentDate: b.lentDate || '',
+        renewed: b.renewed || 0,
+        reserved: b.reserved || 0,
+        note: b.note || ''
+      });
+      added++;
+    }
+  });
+
+  saveData();
+  renderBoard();
+  if (document.getElementById('bookmarkletModal').classList.contains('show')) {
+    closeBookmarklets();
+  }
+
+  toast(`✓ ${person.name}：新增 ${added} 本${updated > 0 ? `、更新 ${updated} 本` : ''}`);
+}
+
+// 解析北市圖借閱頁的純文字
+// 根據實際測試，北市圖借閱頁每本書的文字格式如下：
+//   1.                                             ← 編號（獨立一行）
+//   [書名]                                         ← 書名（獨立一行）
+//   作者：xxx                                      ← 作者
+//   典藏地：延平條碼號：12767553索書號：xxx館藏類型：書刊  ← 混合行
+//   借閱日期：2026-03-27應還日期 : 2026-05-12     ← 兩個日期在同一行
+//   續借次數：1預約人數：0                         ← 兩個數字在同一行
+//   續借                                           ← 續借按鈕
+function parseBorrowList(rawText) {
+  if (!rawText) return [];
+  const lines = rawText.split('\n').map(l => l.trim()).filter(l => l.length > 0);
+  const books = [];
+
+  const dateRe = /(\d{4})[-\/\.](\d{1,2})[-\/\.](\d{1,2})/g;
+
+  function normDate(s) {
+    if (!s) return '';
+    const m = s.match(/(\d{4})[-\/\.](\d{1,2})[-\/\.](\d{1,2})/);
+    return m ? `${m[1]}-${String(m[2]).padStart(2,'0')}-${String(m[3]).padStart(2,'0')}` : '';
+  }
+
+  // 策略：從「編號」行（例如 "1."）開始，往下掃描直到下一個編號或結束
+  // 每個區段內抽取書名、日期、續借、預約、典藏地
+  const itemIndices = [];
+  lines.forEach((l, i) => {
+    if (/^\d+\.\s*$/.test(l)) itemIndices.push(i);
+  });
+
+  // 若找不到編號行，嘗試從每個含「應還日期」的行反推
+  if (itemIndices.length === 0) {
+    lines.forEach((l, i) => {
+      if (l.includes('應還日期')) itemIndices.push(Math.max(0, i - 5));
+    });
+  }
+
+  itemIndices.forEach((startIdx, idx) => {
+    const endIdx = idx + 1 < itemIndices.length ? itemIndices[idx + 1] : lines.length;
+    const segment = lines.slice(startIdx, endIdx);
+
+    let title = '';
+    let dueDate = '';
+    let lentDate = '';
+    let renewed = 0;
+    let reserved = 0;
+    let note = '';
+
+    // 書名：編號行之後、下一個「作者」或「典藏」行之前的非空行
+    let titleCollected = false;
+    for (let i = 0; i < segment.length; i++) {
+      const l = segment[i];
+      if (/^\d+\.\s*$/.test(l)) continue;
+      if (!titleCollected) {
+        if (l.includes('作者') || l.includes('典藏') || l.includes('借閱日期') ||
+            l.includes('應還日期') || l.includes('續借')) break;
+        title = l;
+        titleCollected = true;
+      }
+    }
+
+    // 借閱日期與應還日期：找含「應還日期」的行，可能同時有兩個日期
+    segment.forEach(l => {
+      if (l.includes('應還日期')) {
+        // 例如 "借閱日期：2026-03-27應還日期 : 2026-05-12"
+        const dueMatch = l.match(/應還日期\s*[：:]\s*(\d{4}[-\/\.]\d{1,2}[-\/\.]\d{1,2})/);
+        const lentMatch = l.match(/借閱日期\s*[：:]\s*(\d{4}[-\/\.]\d{1,2}[-\/\.]\d{1,2})/);
+        if (dueMatch) dueDate = normDate(dueMatch[1]);
+        if (lentMatch) lentDate = normDate(lentMatch[1]);
+      }
+      if (l.includes('續借次數')) {
+        const renewMatch = l.match(/續借次數\s*[：:]\s*(\d+)/);
+        const resMatch = l.match(/預約人數\s*[：:]\s*(\d+)/);
+        if (renewMatch) renewed = parseInt(renewMatch[1]) || 0;
+        if (resMatch) reserved = parseInt(resMatch[1]) || 0;
+      }
+      // 典藏地：「典藏地：延平條碼號：...」抽「延平」這段
+      if (l.includes('典藏地')) {
+        const m = l.match(/典藏地\s*[：:]\s*([^\s條碼索書館藏類型]+?)(?=條碼|索書|館藏|$)/);
+        if (m) note = m[1].trim();
+      }
+    });
+
+    if (title && dueDate) {
+      books.push({
+        title: title.slice(0, 120),
+        dueDate: dueDate,
+        lentDate: lentDate,
+        renewed: renewed,
+        reserved: reserved,
+        note: note
+      });
+    }
+  });
+
+  return books;
 }
 
 function renderAccounts() {
