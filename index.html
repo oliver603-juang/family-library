@@ -825,6 +825,137 @@
   }
   .copy-actions .btn { flex: 1; }
 
+  /* ========== 手機友善大按鈕（複製登入資料彈窗） ========== */
+  .copy-card.mobile-flow {
+    max-width: 440px;
+    padding: 1.2rem 1rem;
+  }
+  .copy-title-mobile {
+    font-family: 'Noto Serif TC', serif;
+    font-size: 0.95rem;
+    color: var(--ink-soft);
+    text-align: center;
+    margin: 0.2rem 0 1rem;
+    line-height: 1.4;
+    padding: 0 0.5rem;
+  }
+  .mega-btn {
+    width: 100%;
+    display: flex;
+    align-items: center;
+    gap: 0.8rem;
+    padding: 1rem 0.9rem;
+    background: #fffcf5;
+    border: 2.5px solid var(--btn-color, var(--line));
+    border-radius: 8px;
+    margin-bottom: 0.6rem;
+    text-align: left;
+    transition: all 0.15s;
+    cursor: pointer;
+    min-height: 72px;
+    font-family: inherit;
+  }
+  .mega-btn:active {
+    transform: scale(0.98);
+    background: var(--btn-color);
+    color: white;
+  }
+  .mega-btn:active .mega-btn-hint { color: rgba(255,255,255,0.9); }
+  .mega-btn:active .mega-btn-num { background: white; color: var(--btn-color); }
+
+  .mega-btn-num {
+    flex-shrink: 0;
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    background: var(--btn-color);
+    color: white;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-family: 'JetBrains Mono', monospace;
+    font-weight: 700;
+    font-size: 1.1rem;
+    transition: all 0.15s;
+  }
+  .mega-btn-body {
+    flex: 1;
+    min-width: 0;
+  }
+  .mega-btn-label {
+    font-family: 'Noto Serif TC', serif;
+    font-weight: 700;
+    font-size: 1.15rem;
+    color: var(--ink);
+    margin-bottom: 0.2rem;
+  }
+  .mega-btn-hint {
+    font-size: 0.8rem;
+    color: var(--ink-muted);
+    line-height: 1.4;
+  }
+  .mega-btn-icon {
+    flex-shrink: 0;
+    font-size: 1.5rem;
+    color: var(--btn-color);
+  }
+
+  /* 已完成狀態：淡化 + 打勾 */
+  .mega-btn.mega-btn-done {
+    background: #eef2ec;
+    border-color: var(--sage);
+    border-style: dashed;
+  }
+  .mega-btn.mega-btn-done .mega-btn-num {
+    background: var(--sage);
+  }
+  .mega-btn.mega-btn-done .mega-btn-label {
+    color: var(--sage);
+  }
+  .mega-btn.mega-btn-done .mega-btn-icon {
+    color: var(--sage);
+  }
+  .mega-btn.mega-btn-done:active {
+    background: var(--sage);
+  }
+
+  /* 「開啟北市圖」連結按鈕 */
+  .open-tpml-btn {
+    display: block;
+    width: 100%;
+    padding: 0.8rem;
+    text-align: center;
+    background: var(--moss);
+    color: var(--paper);
+    text-decoration: none;
+    border-radius: 6px;
+    font-family: 'Noto Serif TC', serif;
+    font-weight: 700;
+    font-size: 1rem;
+    margin-top: 0.3rem;
+    margin-bottom: 0.2rem;
+    transition: all 0.15s;
+  }
+  .open-tpml-btn:active {
+    transform: scale(0.98);
+    background: var(--ink);
+  }
+
+  /* 桌機提示：在寬螢幕顯示，手機隱藏 */
+  .desktop-hint {
+    background: #faeae5;
+    border: 1px solid var(--rust);
+    border-radius: 4px;
+    padding: 0.6rem 0.8rem;
+    margin-top: 0.8rem;
+    font-size: 0.78rem;
+    color: var(--rust-dark);
+    line-height: 1.5;
+  }
+  @media (max-width: 600px) {
+    .desktop-hint { display: none; }
+  }
+
   /* 書籤產生器 */
   .bookmarklet-row {
     display: flex;
@@ -924,9 +1055,11 @@
 
   /* 響應式：手機 */
   @media (max-width: 820px) {
-    .people-grid { grid-template-columns: repeat(2, 1fr); }
+    .people-grid { grid-template-columns: repeat(2, 1fr); gap: 0.6rem; }
     .lock-header h1 { font-size: 1.8rem; }
-    .person-card { min-height: 100px; }
+    .person-card { min-height: 110px; padding: 1rem 0.5rem; }
+    .person-card .avatar { width: 44px; height: 44px; font-size: 1.3rem; }
+    .person-card .name { font-size: 1.05rem; }
 
     .board { grid-template-columns: 1fr; }
     .column { border-right: none; border-bottom: 1px solid var(--line); display: none; }
@@ -938,16 +1071,45 @@
     .brand .subtitle { display: none; }
     .tb-btn { padding: 0.4rem 0.6rem; font-size: 0.75rem; }
 
-    .captcha-cell { font-size: 1.4rem; }
-    .key { font-size: 1.5rem; }
+    /* 手機的驗證碼格子稍微大一點 */
+    .captcha-cell { font-size: 1.5rem; }
+    /* 手機的數字鍵盤縮小，不要吃掉整個畫面 */
+    .key {
+      font-size: 1.4rem;
+      aspect-ratio: 1.6;
+    }
     .key.action { font-size: 0.75rem; }
+    .keypad { gap: 0.4rem; }
+
+    /* 手機鎖屏底部按鈕改成 2x2 方便點 */
+    .lock-footer {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 0.4rem;
+      width: 100%;
+      max-width: 360px;
+    }
+    .lock-footer button {
+      padding: 0.8rem 0.5rem;
+      border: 1px solid var(--line);
+      border-radius: 4px;
+      background: var(--paper-dark);
+      text-decoration: none;
+      font-size: 0.85rem;
+      color: var(--ink);
+    }
   }
 
   @media (max-width: 400px) {
     .people-grid { gap: 0.5rem; }
-    .person-card { padding: 0.6rem 0.3rem; min-height: 90px; }
-    .person-card .avatar { width: 32px; height: 32px; font-size: 1rem; }
-    .person-card .name { font-size: 0.85rem; }
+    .person-card { padding: 0.7rem 0.3rem; min-height: 95px; }
+    .person-card .avatar { width: 38px; height: 38px; font-size: 1.1rem; }
+    .person-card .name { font-size: 0.95rem; }
+
+    .mega-btn { padding: 0.8rem 0.7rem; min-height: 66px; }
+    .mega-btn-label { font-size: 1.05rem; }
+    .mega-btn-hint { font-size: 0.75rem; }
+    .copy-title-mobile { font-size: 0.85rem; }
   }
 </style>
 </head>
@@ -1304,46 +1466,107 @@ function showCopyOverlay(person, captcha) {
   const existing = document.getElementById('copyOverlay');
   if (existing) existing.remove();
 
+  currentLoginSession = {
+    cardNo: person.cardNo,
+    password: person.password,
+    captcha: captcha,
+    personName: person.name,
+    personColor: person.color
+  };
+
   const overlay = document.createElement('div');
   overlay.id = 'copyOverlay';
   overlay.innerHTML = `
-    <div class="copy-card" style="border-color:${person.color};">
-      <div class="copy-stamp" style="background:${person.color};">✓ 已複製</div>
-      <div class="copy-title">
-        <span style="color:${person.color};font-weight:700;">${escapeHtml(person.name)}</span> 的登入資料
+    <div class="copy-card mobile-flow" style="border-color:${person.color};">
+      <div class="copy-stamp" style="background:${person.color};">${escapeHtml(person.name)}</div>
+
+      <div class="copy-title-mobile">
+        照順序按 3 顆按鈕，每按一顆切到北市圖貼上
       </div>
-      <div class="copy-preview">
-        <div class="cp-row"><span class="cp-label">帳號</span><span class="cp-value mono">${escapeHtml(person.cardNo)}</span></div>
-        <div class="cp-row"><span class="cp-label">密碼</span><span class="cp-value mono">${'●'.repeat(person.password.length)}</span></div>
-        <div class="cp-row"><span class="cp-label">驗證</span><span class="cp-value mono" style="color:${person.color};">${captcha}</span></div>
+
+      <button class="mega-btn" id="mega-btn-1" onclick="megaCopy('card')" style="--btn-color:${person.color};">
+        <div class="mega-btn-num">1</div>
+        <div class="mega-btn-body">
+          <div class="mega-btn-label">複製帳號</div>
+          <div class="mega-btn-hint">切到北市圖「帳號」欄長按貼上</div>
+        </div>
+        <div class="mega-btn-icon">📋</div>
+      </button>
+
+      <button class="mega-btn" id="mega-btn-2" onclick="megaCopy('pass')" style="--btn-color:${person.color};">
+        <div class="mega-btn-num">2</div>
+        <div class="mega-btn-body">
+          <div class="mega-btn-label">複製密碼</div>
+          <div class="mega-btn-hint">切到北市圖「密碼」欄長按貼上</div>
+        </div>
+        <div class="mega-btn-icon">📋</div>
+      </button>
+
+      <button class="mega-btn" id="mega-btn-3" onclick="megaCopy('captcha')" style="--btn-color:${person.color};">
+        <div class="mega-btn-num">3</div>
+        <div class="mega-btn-body">
+          <div class="mega-btn-label">複製驗證碼</div>
+          <div class="mega-btn-hint">
+            <span class="mono" style="color:${person.color};font-weight:700;font-size:1.2rem;letter-spacing:0.2em;">${captcha}</span>
+          </div>
+        </div>
+        <div class="mega-btn-icon">📋</div>
+      </button>
+
+      <a href="https://book.tpml.edu.tw/" target="_blank" class="open-tpml-btn">
+        🔗 開啟北市圖（新分頁）
+      </a>
+
+      <div class="copy-actions" style="margin-top:0.8rem;">
+        <button class="btn btn-ghost" onclick="closeCopyOverlay()" style="flex:1;">關閉</button>
+        <button class="btn btn-primary" onclick="enterDashboardAndClose()" style="flex:1;">進看板 →</button>
       </div>
-      <div style="background:#faeae5;border:1px solid var(--rust);border-radius:3px;padding:0.6rem 0.8rem;margin-bottom:0.8rem;font-size:0.78rem;color:var(--rust-dark);line-height:1.5;">
-        💡 <strong>更快的方法</strong>：回到鎖屏畫面，點「⭐ 產生快速登入書籤」，把書籤拖到瀏覽器書籤列，下次登入只要點書籤就自動填帳密！
-      </div>
-      <div class="copy-steps">
-        <div style="font-size:0.75rem;color:var(--ink-muted);margin-bottom:0.5rem;letter-spacing:0.05em;">複製的內容格式（帳號 + Tab + 密碼 + Tab + 驗證碼）：</div>
-        <div class="step"><span class="step-num">1</span>切到北市圖登入框</div>
-        <div class="step"><span class="step-num">2</span>點一下「帳號」欄位，按 <kbd>Ctrl</kbd>+<kbd>V</kbd></div>
-        <div class="step"><span class="step-num">3</span>若沒自動跳欄 → 手動點「密碼」欄 → 貼上密碼部分</div>
-        <div class="step"><span class="step-num">4</span>或者個別複製：</div>
-      </div>
-      <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:0.3rem;margin-bottom:1rem;">
-        <button class="btn btn-ghost" onclick="copyOne('${escapeHtml(person.cardNo)}','帳號')" style="font-size:0.8rem;padding:0.4rem;">複製帳號</button>
-        <button class="btn btn-ghost" onclick="copyOne('${escapeHtml(person.password).replace(/'/g,"\\'")}','密碼')" style="font-size:0.8rem;padding:0.4rem;">複製密碼</button>
-        <button class="btn btn-ghost" onclick="copyOne('${captcha}','驗證碼')" style="font-size:0.8rem;padding:0.4rem;">複製驗證碼</button>
-      </div>
-      <div class="copy-actions">
-        <button class="btn btn-ghost" onclick="closeCopyOverlay()">關閉</button>
-        <button class="btn btn-primary" onclick="enterDashboardAndClose()">進看板 →</button>
+
+      <div class="desktop-hint">
+        💡 <strong>桌機使用者</strong>：建議改用「⭐ 快速登入書籤」，一鍵完成帳密自動填入，不用複製貼上。
       </div>
     </div>
   `;
   document.body.appendChild(overlay);
 }
 
+let currentLoginSession = null;
+
+function megaCopy(type) {
+  if (!currentLoginSession) return;
+  const s = currentLoginSession;
+
+  let text, btnId, label, nextStepText;
+  if (type === 'card') {
+    text = s.cardNo; btnId = 'mega-btn-1'; label = '帳號';
+    nextStepText = '→ 切到北市圖長按「帳號」欄貼上 → 回來按第 2 顆';
+  } else if (type === 'pass') {
+    text = s.password; btnId = 'mega-btn-2'; label = '密碼';
+    nextStepText = '→ 切到北市圖長按「密碼」欄貼上 → 回來按第 3 顆';
+  } else {
+    text = s.captcha; btnId = 'mega-btn-3'; label = '驗證碼';
+    nextStepText = '→ 切到北市圖驗證碼欄貼上 → 按登入 ✓';
+  }
+
+  copyToClipboard(text);
+
+  const btn = document.getElementById(btnId);
+  if (btn) {
+    btn.classList.add('mega-btn-done');
+    const bodyLabel = btn.querySelector('.mega-btn-label');
+    if (bodyLabel) bodyLabel.textContent = `✓ ${label}已複製`;
+    const bodyHint = btn.querySelector('.mega-btn-hint');
+    if (bodyHint) bodyHint.textContent = nextStepText;
+    const icon = btn.querySelector('.mega-btn-icon');
+    if (icon) icon.textContent = '✓';
+  }
+
+  toast(`✓ ${label}已複製，去北市圖貼上`);
+}
+
 function copyOne(text, label) {
   copyToClipboard(text);
-  toast(`已複製${label}：${text.length > 10 ? text.slice(0,3) + '●●●' : text}`);
+  toast(`已複製${label}`);
 }
 
 function closeCopyOverlay() {
@@ -1661,71 +1884,13 @@ function closeBookmarklets() {
 
 // 產生書籤小工具的 JS 代碼
 function buildBookmarkletCode(cardNo, password, personName) {
-  // 這段 JS 會在北市圖頁面執行：
-  // 1. 若登入框沒打開，自動點「登入」按鈕並等待欄位出現
-  // 2. 找到欄位後填入帳密（注意：captcha 欄位要用 name 選取，不能用 id，因為北市圖的 HTML 有 bug，label 和 input 共用 ID）
-  // 3. 自動 focus 到驗證碼欄位，讓使用者直接輸入
-  const code = `(function(){
-    var safeName=${JSON.stringify(personName.replace(/'/g, ""))};
-    function notify(text, bg){
-      var n=document.createElement('div');
-      n.textContent=text;
-      n.style.cssText='position:fixed;top:20px;left:50%;transform:translateX(-50%);background:'+bg+';color:#fff;padding:10px 20px;border-radius:4px;z-index:99999;font-weight:bold;box-shadow:0 4px 12px rgba(0,0,0,0.3);font-family:sans-serif;';
-      document.body.appendChild(n);
-      setTimeout(function(){n.remove();},3500);
-    }
-    function findFields(){
-      return {
-        u: document.getElementById('username'),
-        p: document.getElementById('password'),
-        c: document.querySelector('input[name=\"captcha\"]')
-      };
-    }
-    function fill(el,val){
-      try{
-        var setter=Object.getOwnPropertyDescriptor(window.HTMLInputElement.prototype,'value').set;
-        setter.call(el,val);
-        el.dispatchEvent(new Event('input',{bubbles:true}));
-        el.dispatchEvent(new Event('change',{bubbles:true}));
-      }catch(e){el.value=val;}
-    }
-    function doFill(){
-      var f=findFields();
-      if(!f.u||!f.p){
-        notify('❌ 找不到登入欄位，請手動點「登入」按鈕開啟登入框，再點一次書籤','#a83c2a');
-        return false;
-      }
-      fill(f.u,${JSON.stringify(cardNo)});
-      fill(f.p,${JSON.stringify(password)});
-      if(f.c){try{f.c.focus();}catch(e){}}
-      notify('✓ 已填入 '+safeName+' 的帳密，請輸入驗證碼','#2d4a3e');
-      return true;
-    }
-    // 先試直接填
-    if(doFill())return;
-    // 如果失敗，自動找登入按鈕點擊
-    var loginBtn=null;
-    var btns=document.querySelectorAll('button, a');
-    for(var i=0;i<btns.length;i++){
-      var b=btns[i];
-      if(b.textContent.trim()==='登入'){
-        var r=b.getBoundingClientRect();
-        if(r.width>0&&r.height>0){loginBtn=b;break;}
-      }
-    }
-    if(!loginBtn){
-      notify('❌ 請先到北市圖首頁再點書籤','#a83c2a');
-      return;
-    }
-    loginBtn.click();
-    // 等登入框彈出（最多等 2 秒）
-    var tries=0;
-    var iv=setInterval(function(){
-      tries++;
-      if(doFill()||tries>20){clearInterval(iv);}
-    },100);
-  })();`;
-  return 'javascript:' + encodeURIComponent(code.replace(/\s+/g, ' ').trim());
+  // 極簡版：核心功能保留，所有文字壓縮到最短
+  // 功能：1)找欄位填入帳密 2)無登入框時自動點登入 3)等待欄位出現
+  const u = JSON.stringify(cardNo);
+  const p = JSON.stringify(password);
+  const n = JSON.stringify(personName + ' 帳密已填');
+  const code = `(function(){function f(e,v){try{Object.getOwnPropertyDescriptor(HTMLInputElement.prototype,'value').set.call(e,v);e.dispatchEvent(new Event('input',{bubbles:1}));e.dispatchEvent(new Event('change',{bubbles:1}))}catch(_){e.value=v}}function T(m,c){var d=document.createElement('div');d.textContent=m;d.style.cssText='position:fixed;top:20px;left:50%;transform:translateX(-50%);background:'+c+';color:#fff;padding:10px 18px;border-radius:4px;z-index:99999;font-weight:bold';document.body.appendChild(d);setTimeout(function(){d.remove()},2500)}function D(){var U=document.getElementById('username'),P=document.getElementById('password'),C=document.querySelector('input[name="captcha"]');if(!U||!P)return 0;f(U,${u});f(P,${p});if(C)try{C.focus()}catch(_){}T(${n},'#2d4a3e');return 1}if(D())return;var b,L=document.querySelectorAll('button,a');for(var i=0;i<L.length;i++)if(L[i].textContent.trim()==='\\u767b\\u5165'){var r=L[i].getBoundingClientRect();if(r.width>0){b=L[i];break}}if(!b){T('\\u8acb\\u5230\\u5317\\u5e02\\u5716\\u9996\\u9801','#a83c2a');return}b.click();var k=0,I=setInterval(function(){if(D()||++k>20)clearInterval(I)},100)})();`;
+  return 'javascript:' + encodeURIComponent(code);
 }
 
 function renderBookmarklets() {
