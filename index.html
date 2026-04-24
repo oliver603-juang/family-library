@@ -292,7 +292,7 @@
   }
 
   /* ===== 主畫面 ===== */
-  #app { display: none; position: relative; z-index: 2; }
+  #app { display: block; position: relative; z-index: 2; }
 
   .topbar {
     display: flex;
@@ -1157,52 +1157,48 @@
     .mega-btn-hint { font-size: 0.75rem; }
     .copy-title-mobile { font-size: 0.85rem; }
   }
+
+  /* 首頁主要匯入按鈕 */
+  .main-import-bar {
+    display: flex;
+    gap: 0.6rem;
+    padding: 0.8rem 1.5rem;
+    background: linear-gradient(135deg, #fffcf5 0%, #f4ede0 100%);
+    border-bottom: 2px solid var(--moss);
+    align-items: center;
+  }
+  .main-import-bar .import-main-btn {
+    flex: 1;
+    padding: 0.8rem 1.2rem;
+    background: var(--moss);
+    color: #fff;
+    border: none;
+    border-radius: 4px;
+    font-family: 'Noto Serif TC', serif;
+    font-weight: 700;
+    font-size: 1rem;
+    cursor: pointer;
+    transition: all 0.15s;
+  }
+  .main-import-bar .import-main-btn:hover {
+    background: var(--ink);
+    transform: translateY(-1px);
+  }
+  .main-import-bar .import-info {
+    font-size: 0.8rem;
+    color: var(--ink-soft);
+    line-height: 1.4;
+    max-width: 280px;
+  }
+  .main-import-bar .import-info strong { color: var(--moss); }
+  @media (max-width: 820px) {
+    .main-import-bar { flex-direction: column; gap: 0.5rem; padding: 0.7rem 1rem; }
+    .main-import-bar .import-info { max-width: none; text-align: center; font-size: 0.75rem; }
+  }
+
 </style>
 </head>
 <body>
-
-<!-- ========== 登入鎖屏 ========== -->
-<div id="lockscreen">
-  <div class="lock-header">
-    <div class="stamp">HOUSEHOLD · 家庭</div>
-    <h1 class="serif">借閱手帳</h1>
-    <p>臺北市立圖書館 · 多帳號快速登入</p>
-  </div>
-
-  <div class="people-grid" id="peopleGrid"></div>
-
-  <div class="captcha-zone">
-    <div class="captcha-label">
-      <div style="font-size:0.78rem;color:var(--ink-muted);margin-bottom:0.5rem;letter-spacing:0.05em;line-height:1.5;">
-        ① 先到北市圖登入頁看驗證碼圖片<br>
-        ② 回這裡選家人 ③ 輸入 5 位驗證碼
-      </div>
-      輸入 <span class="current-person" id="curPersonLabel">—</span> 的 5 位驗證碼
-    </div>
-    <div class="captcha-display" id="captchaDisplay"></div>
-    <div class="keypad">
-      <button class="key" data-k="1">1</button>
-      <button class="key" data-k="2">2</button>
-      <button class="key" data-k="3">3</button>
-      <button class="key" data-k="4">4</button>
-      <button class="key" data-k="5">5</button>
-      <button class="key" data-k="6">6</button>
-      <button class="key" data-k="7">7</button>
-      <button class="key" data-k="8">8</button>
-      <button class="key" data-k="9">9</button>
-      <button class="key action back" data-k="back">⌫ 刪除</button>
-      <button class="key" data-k="0">0</button>
-      <button class="key action enter" data-k="enter">ENTER ↵</button>
-    </div>
-  </div>
-
-  <div class="lock-footer">
-    <button onclick="openLoginPage()">🔗 開啟北市圖</button>
-    <button onclick="openSettings()">⚙ 設定帳號</button>
-    <button onclick="openBookmarklets()">⭐ 產生快速登入書籤</button>
-    <button onclick="enterDashboard()">跳過登入 →</button>
-  </div>
-</div>
 
 <!-- ========== 主應用 ========== -->
 <div id="app">
@@ -1217,11 +1213,16 @@
     <div class="topbar-actions">
       <button class="tb-btn" onclick="openLoginPage()">北市圖 ↗</button>
       <button class="tb-btn" onclick="openSettings()">⚙ 設定</button>
-      <button class="tb-btn" onclick="lockApp()">🔒</button>
+      <button class="tb-btn" onclick="openBookmarklets()">⭐ 書籤</button>
     </div>
   </div>
 
   <div class="summary-bar" id="summaryBar"></div>
+
+  <div class="main-import-bar">
+    <button class="import-main-btn" onclick="importFromClipboard()">📋 從北市圖剪貼簿匯入借閱</button>
+    <div class="import-info">先到北市圖點 <strong>📥 匯出</strong> 書籤，回來按這顆按鈕</div>
+  </div>
 
   <div class="mobile-tabs" id="mobileTabs"></div>
 
@@ -1690,11 +1691,7 @@ function renderBoard() {
 
     col.appendChild(list);
 
-    const addBtn = document.createElement('button');
-    addBtn.className = 'add-book';
-    addBtn.textContent = '＋ 新增一本書';
-    addBtn.onclick = () => openBookModal(null, p.id);
-    col.appendChild(addBtn);
+    // 新增一本書按鈕已移除（改用匯入功能）
 
     board.appendChild(col);
   });
@@ -2416,9 +2413,8 @@ document.getElementById('settingsModal').addEventListener('click', e => {
   if (e.target.id === 'settingsModal') closeSettings();
 });
 
-// 初始化
-renderLockscreen();
-if (data.people.length > 0) selectPerson(data.people[0].id);
+// 初始化：直接進看板
+renderBoard();
 </script>
 </body>
 </html>
