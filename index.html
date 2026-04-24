@@ -1794,34 +1794,44 @@ function renderBoard() {
 }
 
 function renderBook(b) {
-  const daysLeft = daysDiff(new Date(), new Date(b.dueDate));
-  const el = document.createElement('div');
-  el.className = 'book';
-  if (daysLeft <= 0) el.classList.add('urgent');
-  else if (daysLeft <= 3) el.classList.add('soon');
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  const due = new Date(b.dueDate);
+  due.setHours(0, 0, 0, 0);
+  const daysLeft = Math.round((due - today) / 86400000);
 
-  const dueStr = formatDate(b.dueDate);
-  const daysLabel = daysLeft < 0
-    ? `逾期 ${Math.abs(daysLeft)} 天`
-    : daysLeft === 0 ? '今天到期'
-    : `剩 ${daysLeft} 天`;
-
-  const canRenew = (b.renewed || 0) === 0 && (b.reserved || 0) === 0 && daysLeft >= 0;
-
-  let flagsHtml = '<div class="book-flags">';
-  if ((b.renewed || 0) >= 1) {
-    flagsHtml += '<span class="flag cant-renew">❌ 已續過，不能再續</span>';
-  } else if ((b.reserved || 0) > 0) {
-    flagsHtml += `<span class="flag reserved">⚠ ${b.reserved} 人預約，不能續借</span>`;
-  } else if (daysLeft < 0) {
-    flagsHtml += '<span class="flag cant-renew">⚠ 已逾期，需先歸還</span>';
+  let dueClass = '', dueTag = '';
+  if (daysLeft < 0) {
+    dueClass = 'overdue';
+    dueTag = `<span class="tag tag-red">逾期 ${-daysLeft} 天</span>`;
+  } else if (daysLeft === 0) {
+    dueClass = 'due-today';
+    dueTag = `<span class="tag tag-red">今天到期</span>`;
+  } else if (daysLeft <= 3) {
+    dueClass = 'due-soon';
+    dueTag = `<span class="tag tag-yellow">剩 ${daysLeft} 天</span>`;
   } else {
-    flagsHtml += '<span class="flag renewed" style="color:var(--sage);border-color:var(--sage);">✓ 可續借</span>';
+    dueClass = 'due-ok';
+    dueTag = `<span class="tag tag-green">剩 ${daysLeft} 天</span>`;
   }
-  flagsHtml += '</div>';
 
-  el.innerHTML = `<div class="book-card-v2 ${dueClass}">
-      ${b.cover ? `<img class="cover" src="${escapeHtml(b.cover)}" alt="封面" onerror="this.outerHTML='<div class=\'no-cover\'>📖</div>'">` : `<div class="no-cover">📖</div>`}
+  let renewStatus = '';
+  if (b.renewed >= 1) {
+    renewStatus = `<div class="renew-status renew-no">❌ 已續過，不能再續</div>`;
+  } else if (b.reserved > 0) {
+    renewStatus = `<div class="renew-status renew-wait">⚠ ${b.reserved} 人預約，不能續借</div>`;
+  } else {
+    renewStatus = `<div class="renew-status renew-ok">✓ 可續借</div>`;
+  }
+
+  const coverHTML = b.cover
+    ? `<img class="cover" src="${escapeHtml(b.cover)}" alt="封面" onerror="this.outerHTML='<div class=\\'no-cover\\'>📖</div>'">`
+    : `<div class="no-cover">📖</div>`;
+
+  const card = document.createElement('div');
+  card.className = `book-card book-card-v2 ${dueClass}`;
+  card.innerHTML = `
+      ${coverHTML}
       <div class="book-content">
         <div class="book-title">${escapeHtml(b.title)}</div>
         <div class="book-meta">📅 ${b.dueDate}</div>
@@ -1832,9 +1842,8 @@ function renderBook(b) {
           <button onclick='markRenewed(${JSON.stringify(b.id)})'>🔄 續借</button>
           <button onclick='markReturned(${JSON.stringify(b.id)})'>✓ 歸還</button>
         </div>
-      </div>
-    </div>`;
-  return el;
+      </div>`;
+  return card;
 }
 
 function renderSummary() {
