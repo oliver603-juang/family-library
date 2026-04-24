@@ -2048,10 +2048,45 @@ function buildExporterBookmarklet(personId, personName) {
   const finalJs = coreJs.replace("__LIST__", LIST).replace("__PID__", JSON.stringify(personId));
   return "javascript:" + encodeURIComponent(finalJs);
 }
+// 產生「助手書籤」—— 一顆書籤包含所有家人帳密 + 完整助手面板
+function buildAssistantBookmarklet() {
+  const peopleForBookmark = data.people
+    .filter(p => p.cardNo && p.password)
+    .map(p => ({ id: p.id, name: p.name, cardNo: p.cardNo, password: p.password, color: p.color }));
+  if (peopleForBookmark.length === 0) {
+    toast('請先設定家人帳密');
+    return null;
+  }
+  const LIST_URL = "https://book.tpml.edu.tw/personal/list?action=getLendFile&form=QueryForm";
+  const DASH_URL = "https://oliver603-juang.github.io/family-library/";
+  const coreJs = '(function(){if(document.getElementById("fll-panel")){document.getElementById("fll-panel").remove();return;}var PEOPLE=__PEOPLE__;var LIST_URL="'+LIST_URL+'";var DASH_URL="'+DASH_URL+'";function toast(m,c){var d=document.createElement("div");d.textContent=m;d.style.cssText="position:fixed;top:20px;left:50%;transform:translateX(-50%);background:"+(c||"#2d4a3e")+";color:#fff;padding:10px 18px;border-radius:4px;z-index:999999;font-weight:bold;font-family:sans-serif";document.body.appendChild(d);setTimeout(function(){d.remove()},3000)}function fillF(e,v){try{var s=Object.getOwnPropertyDescriptor(HTMLInputElement.prototype,"value").set;s.call(e,v);e.dispatchEvent(new Event("input",{bubbles:1}));e.dispatchEvent(new Event("change",{bubbles:1}))}catch(_){e.value=v}}function doLogin(p){var u=document.getElementById("username"),pw=document.getElementById("password");if(!u||!pw){var btns=document.querySelectorAll("button,a"),lb=null;for(var i=0;i<btns.length;i++)if(btns[i].textContent.trim()==="\\u767b\\u5165"){var r=btns[i].getBoundingClientRect();if(r.width>0){lb=btns[i];break}}if(!lb){toast("\\u8acb\\u5230\\u5317\\u5e02\\u5716\\u9996\\u9801","#a83c2a");return}lb.click();var t=0,iv=setInterval(function(){t++;var u2=document.getElementById("username"),p2=document.getElementById("password");if(u2&&p2){clearInterval(iv);fillF(u2,p.cardNo);fillF(p2,p.password);var c2=document.querySelector("input[name=\\"captcha\\"]");if(c2)try{c2.focus()}catch(_){}toast("\\u2713 "+p.name+" \\u5e33\\u5bc6\\u5df2\\u586b")}else if(t>20)clearInterval(iv)},100);return}fillF(u,p.cardNo);fillF(pw,p.password);toast("\\u2713 "+p.name+" \\u5e33\\u5bc6\\u5df2\\u586b")}function doExport(p){if(!/personal\\/list/.test(location.pathname)){toast("\\u8df3\\u5230\\u501f\\u95b1\\u9801");location.href=LIST_URL;return}if(document.getElementById("username")){toast("\\u672a\\u767b\\u5165","#a83c2a");return}var bls=document.querySelectorAll(".booklist");if(!bls.length){toast("\\u627e\\u4e0d\\u5230","#a83c2a");return}var books=[];function nd(s){var m=s.match(/(\\d{4})[-\\/\\.](\\d{1,2})[-\\/\\.](\\d{1,2})/);return m?m[1]+"-"+("0"+m[2]).slice(-2)+"-"+("0"+m[3]).slice(-2):""}bls.forEach(function(bl){var L=bl.querySelector(".bookleftblock"),M=bl.querySelector(".bookmidblock");if(!L||!M)return;var im=L.querySelector("img"),sr=im?im.src:"",tx=M.textContent||"";var dm=tx.match(/\\u61c9\\u9084\\u65e5\\u671f\\s*[\\uff1a:]\\s*(\\d{4}[-\\/\\.]\\d{1,2}[-\\/\\.]\\d{1,2})/);var tm=tx.match(/^\\s*(.+?)(?=\\u4f5c\\u8005|\\u5178\\u85cf)/);if(!dm||!tm)return;var lm=tx.match(/\\u501f\\u95b1\\u65e5\\u671f\\s*[\\uff1a:]\\s*(\\d{4}[-\\/\\.]\\d{1,2}[-\\/\\.]\\d{1,2})/);var rm=tx.match(/\\u7e8c\\u501f\\u6b21\\u6578\\s*[\\uff1a:]\\s*(\\d+)/);var pm=tx.match(/\\u9810\\u7d04\\u4eba\\u6578\\s*[\\uff1a:]\\s*(\\d+)/);var nm=tx.match(/\\u5178\\u85cf\\u5730\\s*[\\uff1a:]\\s*([^\\u689d\\u7d22\\u9928]+?)(?=\\u689d\\u78bc|\\u7d22\\u66f8|\\u9928\\u85cf|$)/);books.push({title:tm[1].trim().slice(0,120),dueDate:nd(dm[1]),lentDate:lm?nd(lm[1]):"",renewed:rm?+rm[1]:0,reserved:pm?+pm[1]:0,note:nm?nm[1].trim():"",cover:sr})});if(!books.length){toast("\\u6c92\\u6709\\u8cc7\\u6599","#a83c2a");return}var json=JSON.stringify({app:"FLL",personId:p.id,books:books});(navigator.clipboard?navigator.clipboard.writeText(json):Promise.resolve((function(){var ta=document.createElement("textarea");ta.value=json;document.body.appendChild(ta);ta.select();document.execCommand("copy");ta.remove()})())).then(function(){toast("\\u2713 "+books.length+"\\u672c\\u5df2\\u8907\\u88fd","#2d4a3e");setTimeout(function(){window.open(DASH_URL,"_blank")},1500)})}var panel=document.createElement("div");panel.id="fll-panel";panel.style.cssText="position:fixed;right:20px;bottom:20px;background:#f4ede0;border:2.5px solid #2d4a3e;border-radius:8px;padding:12px;z-index:999998;font-family:sans-serif;box-shadow:4px 4px 12px rgba(0,0,0,0.25);min-width:230px";var hd=document.createElement("div");hd.style.cssText="display:flex;align-items:center;gap:8px;margin-bottom:10px;padding-bottom:8px;border-bottom:1px dashed #c9bfaa";hd.innerHTML="<strong style=\\"color:#2d4a3e;font-size:14px;flex:1\\">\\ud83d\\udcda \\u5bb6\\u5ead\\u501f\\u95b1\\u624b\\u5e33</strong><button id=\\"fll-close\\" style=\\"background:none;border:none;cursor:pointer;font-size:18px\\">\\u00d7</button>";panel.appendChild(hd);PEOPLE.forEach(function(p){if(!p.cardNo||!p.password)return;var row=document.createElement("div");row.style.cssText="display:flex;gap:4px;margin-bottom:4px";var lb=document.createElement("div");lb.style.cssText="flex:0 0 45px;font-weight:700;color:"+p.color+";font-size:12px;display:flex;align-items:center";lb.textContent=p.name;row.appendChild(lb);var b1=document.createElement("button");b1.textContent="\\u2b50 \\u767b\\u5165";b1.style.cssText="flex:1;padding:6px 8px;background:"+p.color+";color:#fff;border:none;border-radius:3px;cursor:pointer;font-size:12px;font-weight:700";b1.onclick=function(){doLogin(p)};row.appendChild(b1);var b2=document.createElement("button");b2.textContent="\\ud83d\\udce5 \\u532f\\u51fa";b2.style.cssText="flex:1;padding:6px 8px;background:transparent;color:"+p.color+";border:1.5px solid "+p.color+";border-radius:3px;cursor:pointer;font-size:12px;font-weight:700";b2.onclick=function(){doExport(p)};row.appendChild(b2);panel.appendChild(row)});var qr=document.createElement("div");qr.style.cssText="margin-top:10px;padding-top:8px;border-top:1px dashed #c9bfaa;font-size:11px;display:flex;gap:8px";qr.innerHTML="<a href=\\""+LIST_URL+"\\" style=\\"color:#2d4a3e\\">\\ud83d\\udcd6 \\u501f\\u95b1\\u9801</a><a href=\\""+DASH_URL+"\\" target=\\"_blank\\" style=\\"color:#2d4a3e\\">\\ud83c\\udfe0 \\u624b\\u5e33</a>";panel.appendChild(qr);document.body.appendChild(panel);document.getElementById("fll-close").onclick=function(){panel.remove()}})();';
+  const finalJs = coreJs.replace('__PEOPLE__', JSON.stringify(peopleForBookmark));
+  return 'javascript:' + encodeURIComponent(finalJs);
+}
 
 function renderBookmarklets() {
   const list = document.getElementById('bookmarkletList');
   list.innerHTML = '';
+  // ========== 助手書籤（一顆包辦 5 人操作）==========
+  const assistHref = buildAssistantBookmarklet();
+  if (assistHref) {
+    const hero = document.createElement('div');
+    hero.innerHTML = `
+      <div style="padding:1rem;background:linear-gradient(135deg,#2d4a3e,#3a6050);border-radius:6px;color:white;margin-bottom:1.2rem;">
+        <div style="font-size:0.9rem;font-weight:700;margin-bottom:0.4rem;">🚀 助手面板書籤（推薦）</div>
+        <div style="font-size:0.75rem;opacity:0.9;line-height:1.5;margin-bottom:0.7rem;">
+          拖一顆書籤到書籤列，在任何北市圖頁面點一下<br>
+          → 右下角跳出 5 人面板（登入+匯出全在這）
+        </div>
+        <a href="${assistHref}" draggable="true"
+          style="display:inline-block;padding:0.6rem 1rem;background:#fff;color:#2d4a3e;text-decoration:none;border-radius:3px;font-weight:700;font-size:0.9rem;cursor:grab;"
+          onclick="event.preventDefault();toast('請拖曳到書籤列');">
+          🚀 家庭借閱助手
+        </a>
+      </div>
+    `;
+    list.appendChild(hero);
+  }
 
   // 頂部提示：新增的匯入按鈕
   const importRow = document.createElement('div');
