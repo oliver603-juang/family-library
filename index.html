@@ -2127,69 +2127,78 @@ function buildBookmarkletCode(cardNo, password, personName) {
 // 匯出借閱書籤：極簡版——只抓頁面文字複製到剪貼簿，解析邏輯放手帳
 // 這樣書籤短而穩定，解析邏輯可以隨時改進不用重新產生書籤
 function buildExporterBookmarklet(personId, personName) {
-  function exportCode(PID, LEND_URL, RESERVE_URL) {
+  function exportCode(PID, LEND_URL, RES_URL) {
     if (!/tpml\.edu\.tw/.test(location.host)) { alert('請到北市圖'); return; }
     if (document.getElementById('username')) { alert('未登入'); return; }
     function toast(m,c){var d=document.createElement('div');d.textContent=m;d.style.cssText='position:fixed;top:20px;left:50%;transform:translateX(-50%);background:'+(c||'#2d4a3e')+';color:#fff;padding:10px 18px;border-radius:4px;z-index:999999;font-weight:bold';document.body.appendChild(d);setTimeout(function(){d.remove()},4000)}
-    function parseBooks(doc) {
-      var books = [];
-      doc.querySelectorAll('.booklist').forEach(function(bl) {
-        var L = bl.querySelector('.bookleftblock'), M = bl.querySelector('.bookmidblock');
-        if (!L || !M) return;
-        var im = L.querySelector('img'), sr = im ? im.src : '', tx = M.textContent || '';
-        var dm = tx.match(/應還日期\s*[：:]\s*(\d{4}[-\/.]\d{1,2}[-\/.]\d{1,2})/);
-        var lm = tx.match(/借閱日期\s*[：:]\s*(\d{4}[-\/.]\d{1,2}[-\/.]\d{1,2})/);
-        var rm = tx.match(/續借次數\s*[：:]\s*(\d+)/);
-        var pm = tx.match(/預約人數\s*[：:]\s*(\d+)/);
-        var nm = tx.match(/典藏地\s*[：:]\s*([^條索館]+?)(?=條碼|索書|館藏|$)/);
-        var tm = tx.match(/^\s*(.+?)(?=作者|典藏)/);
-        if (!dm || !tm) return;
-        function nd(s){var m2=s.match(/(\d{4})[-\/\.](\d{1,2})[-\/\.](\d{1,2})/);return m2?m2[1]+'-'+('0'+m2[2]).slice(-2)+'-'+('0'+m2[3]).slice(-2):'';}
-        books.push({title:tm[1].trim().slice(0,120),dueDate:nd(dm[1]),lentDate:lm?nd(lm[1]):'',renewed:rm?+rm[1]:0,reserved:pm?+pm[1]:0,note:nm?nm[1].trim():'',cover:sr});
-      });
-      return books;
+    function nd(s){var m2=s.match(/(\d{4})[-\/\.](\d{1,2})[-\/\.](\d{1,2})/);return m2?m2[1]+'-'+('0'+m2[2]).slice(-2)+'-'+('0'+m2[3]).slice(-2):'';}
+    // 判斷在哪個頁面
+    var isLend = /getLendFile/.test(location.search);
+    var isRes = /getReserveFile|getTPMLReadBook/.test(location.search);
+    if (!isLend && !isRes) {
+      // 不在借閱或預約頁，先跳到借閱頁
+      toast('跳到借閱頁...');
+      location.href = LEND_URL;
+      return;
     }
-    function parseReservations(doc) {
-      var res = [];
-      doc.querySelectorAll('.booklist').forEach(function(bl) {
-        var L = bl.querySelector('.bookleftblock'), M = bl.querySelector('.bookmidblock');
-        if (!L || !M) return;
-        var im = L.querySelector('img'), sr = im ? im.src : '', tx = M.textContent || '';
-        var tm = tx.match(/^\s*(.+?)(?=作者|典藏)/);
-        var pk = tx.match(/取書館\s*[：:]\s*(.+?)(?=；|$)/);
-        var qp = tx.match(/順位第\s*(\d+)\s*位/);
-        var sd = tx.match(/(\d{4}[-\/.]\d{1,2}[-\/.]\d{1,2})\s*讀者預約/);
-        if (!tm) return;
-        res.push({title:tm[1].trim().slice(0,120),pickupLib:pk?pk[1].trim():'',queuePos:qp?+qp[1]:0,statusDate:sd?sd[1]:'',cover:sr});
-      });
-      return res;
-    }
-    toast('正在抓取借閱+預約...');
-    // 用 fetch 同時抓兩頁
-    Promise.all([
-      fetch(LEND_URL, {credentials:'include'}).then(function(r){return r.text();}),
-      fetch(RESERVE_URL, {credentials:'include'}).then(function(r){return r.text();}).catch(function(){return '';})
-    ]).then(function(results) {
-      var parser = new DOMParser();
-      var lendDoc = parser.parseFromString(results[0], 'text/html');
-      var books = parseBooks(lendDoc);
-      var reservations = [];
-      if (results[1]) {
-        var resDoc = parser.parseFromString(results[1], 'text/html');
-        reservations = parseReservations(resDoc);
-      }
-      var json = JSON.stringify({app:'FLL',personId:PID,books:books,reservations:reservations});
-      navigator.clipboard.writeText(json).then(function(){
-        toast('✓ 借閱 '+books.length+'本 + 預約 '+reservations.length+'本 已複製');
-      }).catch(function(){
-        var ta=document.createElement('textarea');ta.value=json;document.body.appendChild(ta);ta.select();document.execCommand('copy');ta.remove();
-        toast('✓ 借閱 '+books.length+'本 + 預約 '+reservations.length+'本 已複製');
-      });
-    }).catch(function(e){ toast('抓取失敗: '+e.message, '#a83c2a'); });
+    toast('正在抓取...');
+    window.scrollTo(0, document.body.scrollHeight);
+    setTimeout(function() {
+      window.scrollTo(0, document.body.scrollHeight);
+      setTimeout(function() {
+        var bls = document.querySelectorAll('.booklist');
+        if (isLend) {
+          // 抓借閱
+          var books = [];
+          bls.forEach(function(bl) {
+            var L = bl.querySelector('.bookleftblock'), M = bl.querySelector('.bookmidblock');
+            if (!L || !M) return;
+            var im = L.querySelector('img'), sr = im ? im.src : '', tx = M.textContent || '';
+            var dm = tx.match(/應還日期\s*[：:]\s*(\d{4}[-\/.]\d{1,2}[-\/.]\d{1,2})/);
+            var lm = tx.match(/借閱日期\s*[：:]\s*(\d{4}[-\/.]\d{1,2}[-\/.]\d{1,2})/);
+            var rm = tx.match(/續借次數\s*[：:]\s*(\d+)/);
+            var pm = tx.match(/預約人數\s*[：:]\s*(\d+)/);
+            var nm = tx.match(/典藏地\s*[：:]\s*([^條索館]+?)(?=條碼|索書|館藏|$)/);
+            var tm = tx.match(/^\s*(.+?)(?=作者|典藏)/);
+            if (!dm || !tm) return;
+            books.push({title:tm[1].trim().slice(0,120),dueDate:nd(dm[1]),lentDate:lm?nd(lm[1]):'',renewed:rm?+rm[1]:0,reserved:pm?+pm[1]:0,note:nm?nm[1].trim():'',cover:sr});
+          });
+          // 存到 sessionStorage，等抓預約時合併
+          sessionStorage.setItem('fll_books_'+PID, JSON.stringify(books));
+          toast('✓ 借閱 '+books.length+'本，跳到預約頁...');
+          setTimeout(function(){ location.href = RES_URL; }, 1200);
+        } else {
+          // 抓預約
+          var reservations = [];
+          bls.forEach(function(bl) {
+            var L = bl.querySelector('.bookleftblock'), M = bl.querySelector('.bookmidblock');
+            if (!L || !M) return;
+            var im = L.querySelector('img'), sr = im ? im.src : '', tx = M.textContent || '';
+            var tm = tx.match(/^\s*(.+?)(?=作者|典藏)/);
+            var pk = tx.match(/取書館\s*[：:]\s*(.+?)(?=；|$)/);
+            var qp = tx.match(/順位第\s*(\d+)\s*位/);
+            var sd = tx.match(/(\d{4}[-\/.]\d{1,2}[-\/.]\d{1,2})\s*讀者預約/);
+            if (!tm) return;
+            reservations.push({title:tm[1].trim().slice(0,120),pickupLib:pk?pk[1].trim():'',queuePos:qp?+qp[1]:0,statusDate:sd?sd[1]:'',cover:sr});
+          });
+          // 合併借閱資料
+          var savedBooks = [];
+          try { savedBooks = JSON.parse(sessionStorage.getItem('fll_books_'+PID) || '[]'); } catch(e) {}
+          sessionStorage.removeItem('fll_books_'+PID);
+          var json = JSON.stringify({app:'FLL',personId:PID,books:savedBooks,reservations:reservations});
+          navigator.clipboard.writeText(json).then(function(){
+            toast('✓ 借閱 '+savedBooks.length+'本 + 預約 '+reservations.length+'本 已複製');
+          }).catch(function(){
+            var ta=document.createElement('textarea');ta.value=json;document.body.appendChild(ta);ta.select();document.execCommand('copy');ta.remove();
+            toast('✓ 借閱 '+savedBooks.length+'本 + 預約 '+reservations.length+'本 已複製');
+          });
+        }
+      }, 1500);
+    }, 1000);
   }
   var LEND = 'https://book.tpml.edu.tw/personal/list?action=getLendFile&form=QueryForm';
-  var RESERVE = 'https://book.tpml.edu.tw/personal/list?action=getReserveFile&form=QueryForm';
-  var code = '(' + exportCode.toString() + ')(' + JSON.stringify(personId) + ',' + JSON.stringify(LEND) + ',' + JSON.stringify(RESERVE) + ')';
+  var RES = 'https://book.tpml.edu.tw/personal/list?action=getReserveFile&form=QueryForm';
+  var code = '(' + exportCode.toString() + ')(' + JSON.stringify(personId) + ',' + JSON.stringify(LEND) + ',' + JSON.stringify(RES) + ')';
   return 'javascript:' + encodeURIComponent(code);
 }
 
@@ -2207,10 +2216,24 @@ function buildAssistantBookmarklet() {
     function doLogin(p){var u=document.getElementById('username'),pw=document.getElementById('password');if(!u||!pw){var bs=document.querySelectorAll('button,a');for(var i=0;i<bs.length;i++){if(bs[i].textContent.trim()==='登入'){bs[i].click();var t=0,iv=setInterval(function(){t++;var u2=document.getElementById('username'),p2=document.getElementById('password');if(u2&&p2){clearInterval(iv);fillF(u2,p.cardNo);fillF(p2,p.password);toast('✓ '+p.name+' 帳密已填')}else if(t>20)clearInterval(iv)},100);return;}}toast('請到北市圖首頁','#a83c2a');return;}fillF(u,p.cardNo);fillF(pw,p.password);toast('✓ '+p.name+' 帳密已填')}
     function doExport(p){
       if(document.getElementById('username')){toast('未登入','#a83c2a');return;}
-      toast('正在抓取借閱+預約...');
-      function parseB(doc){var books=[];doc.querySelectorAll('.booklist').forEach(function(bl){var L=bl.querySelector('.bookleftblock'),M=bl.querySelector('.bookmidblock');if(!L||!M)return;var im=L.querySelector('img'),sr=im?im.src:'',tx=M.textContent||'';var dm=tx.match(/應還日期\s*[：:]\s*(\d{4}[-\/.]\d{1,2}[-\/.]\d{1,2})/);var tm=tx.match(/^\s*(.+?)(?=作者|典藏)/);if(!dm||!tm)return;books.push({title:tm[1].trim().slice(0,120),dueDate:dm[1].replace(/\//g,'-'),cover:sr})});return books;}
-      function parseR(doc){var res=[];doc.querySelectorAll('.booklist').forEach(function(bl){var L=bl.querySelector('.bookleftblock'),M=bl.querySelector('.bookmidblock');if(!L||!M)return;var im=L.querySelector('img'),sr=im?im.src:'',tx=M.textContent||'';var tm=tx.match(/^\s*(.+?)(?=作者|典藏)/);var pk=tx.match(/取書館\s*[：:]\s*(.+?)(?=；|$)/);var qp=tx.match(/順位第\s*(\d+)\s*位/);if(!tm)return;res.push({title:tm[1].trim().slice(0,120),pickupLib:pk?pk[1].trim():'',queuePos:qp?+qp[1]:0,cover:sr})});return res;}
-      Promise.all([fetch(LIST,{credentials:'include'}).then(function(r){return r.text()}),fetch('https://book.tpml.edu.tw/personal/list?action=getReserveFile&form=QueryForm',{credentials:'include'}).then(function(r){return r.text()}).catch(function(){return ''})]).then(function(results){var parser=new DOMParser();var books=parseB(parser.parseFromString(results[0],'text/html'));var reservations=results[1]?parseR(parser.parseFromString(results[1],'text/html')):[];var json=JSON.stringify({app:'FLL',personId:p.id,books:books,reservations:reservations});navigator.clipboard.writeText(json).then(function(){toast('✓ 借閱'+books.length+'本+預約'+reservations.length+'本');setTimeout(function(){window.open(DASH,'_blank')},1500)})}).catch(function(e){toast('失敗:'+e.message,'#a83c2a')});
+      var isLend=/getLendFile/.test(location.search);
+      var isRes=/getReserveFile|getTPMLReadBook/.test(location.search);
+      if(!isLend&&!isRes){toast('跳到借閱頁...');location.href=LIST;return;}
+      toast('正在抓取...');window.scrollTo(0,document.body.scrollHeight);
+      setTimeout(function(){window.scrollTo(0,document.body.scrollHeight);setTimeout(function(){
+        var bls=document.querySelectorAll('.booklist');
+        if(isLend){
+          var books=[];bls.forEach(function(bl){var L=bl.querySelector('.bookleftblock'),M=bl.querySelector('.bookmidblock');if(!L||!M)return;var im=L.querySelector('img'),sr=im?im.src:'',tx=M.textContent||'';var dm=tx.match(/應還日期\s*[：:]\s*(\d{4}[-\/.]\d{1,2}[-\/.]\d{1,2})/);var tm=tx.match(/^\s*(.+?)(?=作者|典藏)/);if(!dm||!tm)return;books.push({title:tm[1].trim().slice(0,120),dueDate:dm[1].replace(/\//g,'-'),cover:sr})});
+          sessionStorage.setItem('fll_books_'+p.id,JSON.stringify(books));
+          toast('✓ 借閱 '+books.length+'本，跳到預約頁...');
+          setTimeout(function(){location.href='https://book.tpml.edu.tw/personal/list?action=getReserveFile&form=QueryForm'},1200);
+        }else{
+          var res=[];bls.forEach(function(bl){var L=bl.querySelector('.bookleftblock'),M=bl.querySelector('.bookmidblock');if(!L||!M)return;var im=L.querySelector('img'),sr=im?im.src:'',tx=M.textContent||'';var tm=tx.match(/^\s*(.+?)(?=作者|典藏)/);var pk=tx.match(/取書館\s*[：:]\s*(.+?)(?=；|$)/);var qp=tx.match(/順位第\s*(\d+)\s*位/);if(!tm)return;res.push({title:tm[1].trim().slice(0,120),pickupLib:pk?pk[1].trim():'',queuePos:qp?+qp[1]:0,cover:sr})});
+          var saved=[];try{saved=JSON.parse(sessionStorage.getItem('fll_books_'+p.id)||'[]')}catch(e){}sessionStorage.removeItem('fll_books_'+p.id);
+          var json=JSON.stringify({app:'FLL',personId:p.id,books:saved,reservations:res});
+          navigator.clipboard.writeText(json).then(function(){toast('✓ 借閱 '+saved.length+'本+預約 '+res.length+'本');setTimeout(function(){window.open(DASH,'_blank')},1500)});
+        }
+      },1500)},1000);
     }
     var panel=document.createElement('div');panel.id='fll-panel';panel.style.cssText='position:fixed;right:20px;bottom:20px;background:#f4ede0;border:2.5px solid #2d4a3e;border-radius:8px;padding:12px;z-index:999998;font-family:sans-serif;box-shadow:4px 4px 12px rgba(0,0,0,0.25);min-width:230px';
     var hd=document.createElement('div');hd.style.cssText='display:flex;align-items:center;gap:8px;margin-bottom:10px;padding-bottom:8px;border-bottom:1px dashed #c9bfaa';hd.innerHTML='<strong style="color:#2d4a3e;font-size:14px;flex:1">📚 家庭借閱手帳</strong><button id="fll-close" style="background:none;border:none;cursor:pointer;font-size:18px">×</button>';panel.appendChild(hd);
