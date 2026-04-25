@@ -2291,27 +2291,6 @@ function exportAllBookmarks() {
 function renderBookmarklets() {
   const list = document.getElementById('bookmarkletList');
   list.innerHTML = '';
-  // ========== 助手書籤（一顆包辦 5 人操作）==========
-  const assistHref = buildAssistantBookmarklet();
-  if (assistHref) {
-    const hero = document.createElement('div');
-    hero.innerHTML = `
-      <div style="padding:1rem;background:linear-gradient(135deg,#2d4a3e,#3a6050);border-radius:6px;color:white;margin-bottom:1.2rem;">
-        <div style="font-size:0.9rem;font-weight:700;margin-bottom:0.4rem;">🚀 助手面板書籤（推薦）</div>
-        <div style="font-size:0.75rem;opacity:0.9;line-height:1.5;margin-bottom:0.7rem;">
-          拖一顆書籤到書籤列，在任何北市圖頁面點一下<br>
-          → 右下角跳出 5 人面板（登入+匯出全在這）
-        </div>
-        <a href="${assistHref}" draggable="true"
-          style="display:inline-block;padding:0.6rem 1rem;background:#fff;color:#2d4a3e;text-decoration:none;border-radius:3px;font-weight:700;font-size:0.9rem;cursor:grab;"
-          onclick="event.preventDefault();toast('請拖曳到書籤列');">
-          🚀 家庭借閱助手
-        </a>
-      </div>
-    `;
-    list.appendChild(hero);
-  }
-
   // 頂部提示：新增的匯入按鈕
   const importRow = document.createElement('div');
   importRow.className = 'import-row';
