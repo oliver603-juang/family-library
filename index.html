@@ -2444,6 +2444,28 @@ async function importFromClipboard() {
     }
   });
 
+  // 處理預約
+  var resAdded = 0;
+  try {
+    var resPayload = JSON.parse(text);
+    if (resPayload.reservations && resPayload.reservations.length > 0) {
+      if (!data.reservations) data.reservations = [];
+      data.reservations = data.reservations.filter(function(r) { return r.personId !== personId; });
+      resPayload.reservations.forEach(function(r) {
+        data.reservations.push({
+          id: 'r_' + Date.now() + '_' + Math.random().toString(36).slice(2, 6),
+          personId: personId,
+          title: r.title || '',
+          pickupLib: r.pickupLib || '',
+          statusDate: r.statusDate || '',
+          queuePos: r.queuePos || 0,
+          cover: r.cover || ''
+        });
+        resAdded++;
+      });
+    }
+  } catch(e) {}
+
   saveData();
   renderBoard();
   if (document.getElementById('bookmarkletModal').classList.contains('show')) {
