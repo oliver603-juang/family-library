@@ -1316,15 +1316,20 @@
     <button class="ics-export-btn" onclick="exportToICS()">📅 匯出行事曆</button>
   </div>
 
+  <div id="viewTabs" style="display:flex;gap:0;padding:0 1.5rem;background:var(--paper-dark);border-bottom:1px solid var(--line);">
+    <button class="view-tab active" data-view="lend" onclick="switchView('lend')" style="flex:1;padding:0.6rem;font-family:'Noto Serif TC',serif;font-weight:700;font-size:0.95rem;border:none;border-bottom:3px solid var(--moss);background:transparent;color:var(--moss);cursor:pointer;">📚 借閱中</button>
+    <button class="view-tab" data-view="reserve" onclick="switchView('reserve')" style="flex:1;padding:0.6rem;font-family:'Noto Serif TC',serif;font-weight:700;font-size:0.95rem;border:none;border-bottom:3px solid transparent;background:transparent;color:var(--ink-muted);cursor:pointer;">📋 預約中</button>
+  </div>
   <div class="mobile-tabs" id="mobileTabs"></div>
 
   <div class="board" id="board"></div>
+  <div class="board" id="reserveBoard" style="display:none;"></div>
 </div>
 
 <!-- ========== 彈窗：新增/編輯書 ========== -->
 <div class="modal-backdrop" id="bookModal">
   <div class="modal">
-    <h2 class="serif" id="bookModalTitle">新增書籍</h2>
+    <div style="display:flex;justify-content:space-between;align-items:center;"><h2 class="serif" id="bookModalTitle" style="margin:0;">新增書籍</h2><button onclick="closeBookModal()" style="background:none;border:none;font-size:1.5rem;cursor:pointer;color:var(--ink-muted);padding:0.2rem 0.5rem;">×</button></div>
     <input type="hidden" id="bookEditId">
     <input type="hidden" id="bookEditPerson">
     <div class="field">
@@ -1369,7 +1374,7 @@
 <!-- ========== 彈窗：設定 ========== -->
 <div class="modal-backdrop" id="settingsModal">
   <div class="modal" style="max-width:520px;">
-    <h2 class="serif">設定</h2>
+    <div style="display:flex;justify-content:space-between;align-items:center;"><h2 class="serif" style="margin:0;">設定</h2><button onclick="closeSettings()" style="background:none;border:none;font-size:1.5rem;cursor:pointer;color:var(--ink-muted);padding:0.2rem 0.5rem;">×</button></div>
     <div class="settings-tabs">
       <button class="active" data-tab="accounts">👥 帳號</button>
       <button data-tab="data">💾 資料</button>
@@ -1413,7 +1418,7 @@
 <!-- ========== 彈窗：書籤產生器 ========== -->
 <div class="modal-backdrop" id="bookmarkletModal">
   <div class="modal" style="max-width:560px;">
-    <h2 class="serif">⭐ 一鍵登入書籤 + 📥 借閱同步</h2>
+    <div style="display:flex;justify-content:space-between;align-items:center;"><h2 class="serif" style="margin:0;">⭐ 書籤管理</h2><button onclick="closeBookmarklets()" style="background:none;border:none;font-size:1.5rem;cursor:pointer;color:var(--ink-muted);padding:0.2rem 0.5rem;">×</button></div>
     <p style="font-size:0.85rem;color:var(--ink-soft);margin-bottom:0.8rem;line-height:1.6;">
       每個家人有 <strong>兩個書籤</strong>：<br>
       <span style="color:var(--moss);font-weight:700;">⭐ 登入</span>：在北市圖首頁點，自動填帳密<br>
@@ -1452,7 +1457,8 @@ const DEFAULT_DATA = {
     { id: 'p4', name: '老二',   color: '#8a6a2a', cardNo: '', password: '' },
     { id: 'p5', name: '老二B', cardNo: '', password: '', color: '#c68b2a' }
   ],
-  books: []  // { id, personId, title, lentDate, dueDate, renewed, reserved, note }
+  books: [],  // { id, personId, title, lentDate, dueDate, renewed, reserved, note }
+  reservations: []  // { id, personId, title, pickupLib, statusDate, queuePos, cover }
 };
 
 const STORAGE_KEY = 'family_library_data_v1';
@@ -1466,7 +1472,7 @@ function loadData() {
     const raw = localStorage.getItem(STORAGE_KEY);
     if (raw) {
       const parsed = JSON.parse(raw);
-      if (parsed.people && parsed.books) return parsed;
+      if (parsed.people && parsed.books) { if (!parsed.reservations) parsed.reservations = []; return parsed; }
     }
   } catch(e) {}
   return JSON.parse(JSON.stringify(DEFAULT_DATA));
@@ -1794,6 +1800,82 @@ function renderBoard() {
   renderMobileTabs();
 }
 
+let currentView = 'lend';
+
+function switchView(view) {
+  currentView = view;
+  document.querySelectorAll('#viewTabs button').forEach(function(b) {
+    var isActive = b.dataset.view === view;
+    b.style.borderBottomColor = isActive ? 'var(--moss)' : 'transparent';
+    b.style.color = isActive ? 'var(--moss)' : 'var(--ink-muted)';
+    b.classList.toggle('active', isActive);
+  });
+  document.getElementById('board').style.display = view === 'lend' ? 'grid' : 'none';
+  document.getElementById('reserveBoard').style.display = view === 'reserve' ? 'grid' : 'none';
+  if (view === 'reserve') renderReserveBoard();
+  // 更新摘要
+  renderSummary();
+}
+
+function renderReserveBoard() {
+  var board = document.getElementById('reserveBoard');
+  board.innerHTML = '';
+  data.people.forEach(function(p) {
+    var col = document.createElement('div');
+    col.className = 'column';
+    col.dataset.pid = p.id;
+    col.style.setProperty('--col-color', p.color);
+    var personRes = (data.reservations || []).filter(function(r) { return r.personId === p.id; });
+    var header = document.createElement('div');
+    header.className = 'col-header';
+    header.innerHTML = '<div class="col-name">' + escapeHtml(p.name) + '</div><div class="col-count"><span class="num">' + personRes.length + '</span> 本</div>';
+    col.appendChild(header);
+    var list = document.createElement('div');
+    list.className = 'books-list';
+    if (personRes.length === 0) {
+      var empty = document.createElement('div');
+      empty.className = 'empty-state';
+      empty.innerHTML = '<div class="empty-icon">📋</div>沒有預約';
+      list.appendChild(empty);
+    } else {
+      personRes.forEach(function(r) { list.appendChild(renderReservation(r)); });
+    }
+    col.appendChild(list);
+    board.appendChild(col);
+  });
+}
+
+function renderReservation(r) {
+  var coverHTML = r.cover
+    ? '<img class="cover" src="' + escapeHtml(r.cover) + '" alt="封面" onerror="this.outerHTML=\'<div class=\\\'no-cover\\\'>📋</div>\'">'
+    : '<div class="no-cover">📋</div>';
+  var queueText = r.queuePos ? '順位第 ' + r.queuePos + ' 位' : '';
+  var statusDate = r.statusDate || '';
+  var pickupText = r.pickupLib ? '📍 ' + escapeHtml(r.pickupLib) : '';
+  var card = document.createElement('div');
+  card.className = 'book-card book-card-v2';
+  card.style.borderLeftColor = 'var(--amber)';
+  card.innerHTML = coverHTML +
+    '<div class="book-content">' +
+    '<div class="book-title">' + escapeHtml(r.title) + '</div>' +
+    (pickupText ? '<div class="book-meta">' + pickupText + '</div>' : '') +
+    (queueText ? '<div style="color:var(--rust);font-weight:700;font-size:0.82rem;">🔢 ' + queueText + '</div>' : '') +
+    (statusDate ? '<div class="book-meta">📅 ' + statusDate + '</div>' : '') +
+    '<div class="book-actions-compact">' +
+    '<button onclick=\'deleteReservation(' + JSON.stringify(r.id) + ')\'>✕ 移除</button>' +
+    '</div></div>';
+  return card;
+}
+
+function deleteReservation(id) {
+  if (!confirm('移除這筆預約紀錄？')) return;
+  data.reservations = (data.reservations || []).filter(function(x) { return x.id !== id; });
+  saveData();
+  renderReserveBoard();
+  renderSummary();
+  toast('已移除');
+}
+
 function renderBook(b) {
   const today = new Date();
   today.setHours(0, 0, 0, 0);
@@ -1863,6 +1945,7 @@ function renderSummary() {
     ${today > 0 ? `<div class="summary-item overdue">⏰ ${today} 本今天到期</div>` : ''}
     ${soon > 0 ? `<div class="summary-item soon">⚠ ${soon} 本 3 天內到期</div>` : ''}
     ${(overdue + today + soon) === 0 && total > 0 ? `<div class="summary-item" style="color:var(--sage);">✓ 都還很久，可以安心</div>` : ''}
+    ${(data.reservations||[]).length > 0 ? `<div class="summary-item" style="color:var(--amber);">📋 預約 ${(data.reservations||[]).length} 本</div>` : ''}
     <div class="summary-item" style="margin-left:auto;color:var(--ink-muted);font-size:0.75rem;">更新於 ${formatDate(new Date())}</div>
   `;
 }
@@ -2044,48 +2127,69 @@ function buildBookmarkletCode(cardNo, password, personName) {
 // 匯出借閱書籤：極簡版——只抓頁面文字複製到剪貼簿，解析邏輯放手帳
 // 這樣書籤短而穩定，解析邏輯可以隨時改進不用重新產生書籤
 function buildExporterBookmarklet(personId, personName) {
-  function exportCode(PID, LIST_URL) {
-    if (!/tpml\.edu\.tw/.test(location.host)) {
-      alert('請到北市圖網站使用'); return;
+  function exportCode(PID, LEND_URL, RESERVE_URL) {
+    if (!/tpml\.edu\.tw/.test(location.host)) { alert('請到北市圖'); return; }
+    if (document.getElementById('username')) { alert('未登入'); return; }
+    function toast(m,c){var d=document.createElement('div');d.textContent=m;d.style.cssText='position:fixed;top:20px;left:50%;transform:translateX(-50%);background:'+(c||'#2d4a3e')+';color:#fff;padding:10px 18px;border-radius:4px;z-index:999999;font-weight:bold';document.body.appendChild(d);setTimeout(function(){d.remove()},4000)}
+    function parseBooks(doc) {
+      var books = [];
+      doc.querySelectorAll('.booklist').forEach(function(bl) {
+        var L = bl.querySelector('.bookleftblock'), M = bl.querySelector('.bookmidblock');
+        if (!L || !M) return;
+        var im = L.querySelector('img'), sr = im ? im.src : '', tx = M.textContent || '';
+        var dm = tx.match(/應還日期\s*[：:]\s*(\d{4}[-\/.]\d{1,2}[-\/.]\d{1,2})/);
+        var lm = tx.match(/借閱日期\s*[：:]\s*(\d{4}[-\/.]\d{1,2}[-\/.]\d{1,2})/);
+        var rm = tx.match(/續借次數\s*[：:]\s*(\d+)/);
+        var pm = tx.match(/預約人數\s*[：:]\s*(\d+)/);
+        var nm = tx.match(/典藏地\s*[：:]\s*([^條索館]+?)(?=條碼|索書|館藏|$)/);
+        var tm = tx.match(/^\s*(.+?)(?=作者|典藏)/);
+        if (!dm || !tm) return;
+        function nd(s){var m2=s.match(/(\d{4})[-\/\.](\d{1,2})[-\/\.](\d{1,2})/);return m2?m2[1]+'-'+('0'+m2[2]).slice(-2)+'-'+('0'+m2[3]).slice(-2):'';}
+        books.push({title:tm[1].trim().slice(0,120),dueDate:nd(dm[1]),lentDate:lm?nd(lm[1]):'',renewed:rm?+rm[1]:0,reserved:pm?+pm[1]:0,note:nm?nm[1].trim():'',cover:sr});
+      });
+      return books;
     }
-    if (!/personal\/list/.test(location.pathname)) {
-      location.href = LIST_URL; return;
+    function parseReservations(doc) {
+      var res = [];
+      doc.querySelectorAll('.booklist').forEach(function(bl) {
+        var L = bl.querySelector('.bookleftblock'), M = bl.querySelector('.bookmidblock');
+        if (!L || !M) return;
+        var im = L.querySelector('img'), sr = im ? im.src : '', tx = M.textContent || '';
+        var tm = tx.match(/^\s*(.+?)(?=作者|典藏)/);
+        var pk = tx.match(/取書館\s*[：:]\s*(.+?)(?=；|$)/);
+        var qp = tx.match(/順位第\s*(\d+)\s*位/);
+        var sd = tx.match(/(\d{4}[-\/.]\d{1,2}[-\/.]\d{1,2})\s*讀者預約/);
+        if (!tm) return;
+        res.push({title:tm[1].trim().slice(0,120),pickupLib:pk?pk[1].trim():'',queuePos:qp?+qp[1]:0,statusDate:sd?sd[1]:'',cover:sr});
+      });
+      return res;
     }
-    if (document.getElementById('username')) {
-      alert('尚未登入'); return;
-    }
-    function toast(m,c){var d=document.createElement('div');d.textContent=m;d.style.cssText='position:fixed;top:20px;left:50%;transform:translateX(-50%);background:'+(c||'#2d4a3e')+';color:#fff;padding:10px 18px;border-radius:4px;z-index:999999;font-weight:bold';document.body.appendChild(d);setTimeout(function(){d.remove()},3000)}
-    toast('正在抓取資料...');
-    window.scrollTo(0, document.body.scrollHeight);
-    setTimeout(function() {
-      window.scrollTo(0, document.body.scrollHeight);
-      setTimeout(function() {
-        var bls = document.querySelectorAll('.booklist');
-        if (!bls.length) { toast('找不到借閱列表','#a83c2a'); return; }
-        var books = [];
-        bls.forEach(function(bl) {
-          var L = bl.querySelector('.bookleftblock'), M = bl.querySelector('.bookmidblock');
-          if (!L || !M) return;
-          var im = L.querySelector('img'), sr = im ? im.src : '';
-          var tx = M.textContent || '';
-          var dm = tx.match(/應還日期\s*[：:]\s*(\d{4}[-\/.]\d{1,2}[-\/.]\d{1,2})/);
-          var lm = tx.match(/借閱日期\s*[：:]\s*(\d{4}[-\/.]\d{1,2}[-\/.]\d{1,2})/);
-          var rm = tx.match(/續借次數\s*[：:]\s*(\d+)/);
-          var pm = tx.match(/預約人數\s*[：:]\s*(\d+)/);
-          var nm = tx.match(/典藏地\s*[：:]\s*([^條索館]+?)(?=條碼|索書|館藏|$)/);
-          var tm = tx.match(/^\s*(.+?)(?=作者|典藏)/);
-          if (!dm || !tm) return;
-          function nd(s){var m2=s.match(/(\d{4})[-\/\.](\d{1,2})[-\/\.](\d{1,2})/);return m2?m2[1]+'-'+('0'+m2[2]).slice(-2)+'-'+('0'+m2[3]).slice(-2):'';}
-          books.push({title:tm[1].trim().slice(0,120),dueDate:nd(dm[1]),lentDate:lm?nd(lm[1]):'',renewed:rm?+rm[1]:0,reserved:pm?+pm[1]:0,note:nm?nm[1].trim():'',cover:sr});
-        });
-        if (!books.length) { toast('沒有借閱資料','#a83c2a'); return; }
-        var json = JSON.stringify({app:'FLL',personId:PID,books:books});
-        navigator.clipboard.writeText(json).then(function(){toast('✓ '+books.length+'本已複製')}).catch(function(){var ta=document.createElement('textarea');ta.value=json;document.body.appendChild(ta);ta.select();document.execCommand('copy');ta.remove();toast('✓ '+books.length+'本已複製');});
-      }, 1500);
-    }, 1000);
+    toast('正在抓取借閱+預約...');
+    // 用 fetch 同時抓兩頁
+    Promise.all([
+      fetch(LEND_URL, {credentials:'include'}).then(function(r){return r.text();}),
+      fetch(RESERVE_URL, {credentials:'include'}).then(function(r){return r.text();}).catch(function(){return '';})
+    ]).then(function(results) {
+      var parser = new DOMParser();
+      var lendDoc = parser.parseFromString(results[0], 'text/html');
+      var books = parseBooks(lendDoc);
+      var reservations = [];
+      if (results[1]) {
+        var resDoc = parser.parseFromString(results[1], 'text/html');
+        reservations = parseReservations(resDoc);
+      }
+      var json = JSON.stringify({app:'FLL',personId:PID,books:books,reservations:reservations});
+      navigator.clipboard.writeText(json).then(function(){
+        toast('✓ 借閱 '+books.length+'本 + 預約 '+reservations.length+'本 已複製');
+      }).catch(function(){
+        var ta=document.createElement('textarea');ta.value=json;document.body.appendChild(ta);ta.select();document.execCommand('copy');ta.remove();
+        toast('✓ 借閱 '+books.length+'本 + 預約 '+reservations.length+'本 已複製');
+      });
+    }).catch(function(e){ toast('抓取失敗: '+e.message, '#a83c2a'); });
   }
-  var LIST = 'https://book.tpml.edu.tw/personal/list?action=getLendFile&form=QueryForm';
-  var code = '(' + exportCode.toString() + ')(' + JSON.stringify(personId) + ',' + JSON.stringify(LIST) + ')';
+  var LEND = 'https://book.tpml.edu.tw/personal/list?action=getLendFile&form=QueryForm';
+  var RESERVE = 'https://book.tpml.edu.tw/personal/list?action=getReserveFile&form=QueryForm';
+  var code = '(' + exportCode.toString() + ')(' + JSON.stringify(personId) + ',' + JSON.stringify(LEND) + ',' + JSON.stringify(RESERVE) + ')';
   return 'javascript:' + encodeURIComponent(code);
 }
 
@@ -2101,7 +2205,13 @@ function buildAssistantBookmarklet() {
     function toast(m,c){var d=document.createElement('div');d.textContent=m;d.style.cssText='position:fixed;top:20px;left:50%;transform:translateX(-50%);background:'+(c||'#2d4a3e')+';color:#fff;padding:10px 18px;border-radius:4px;z-index:999999;font-weight:bold;font-family:sans-serif';document.body.appendChild(d);setTimeout(function(){d.remove()},3000)}
     function fillF(e,v){try{Object.getOwnPropertyDescriptor(HTMLInputElement.prototype,'value').set.call(e,v);e.dispatchEvent(new Event('input',{bubbles:1}));e.dispatchEvent(new Event('change',{bubbles:1}))}catch(x){e.value=v}}
     function doLogin(p){var u=document.getElementById('username'),pw=document.getElementById('password');if(!u||!pw){var bs=document.querySelectorAll('button,a');for(var i=0;i<bs.length;i++){if(bs[i].textContent.trim()==='登入'){bs[i].click();var t=0,iv=setInterval(function(){t++;var u2=document.getElementById('username'),p2=document.getElementById('password');if(u2&&p2){clearInterval(iv);fillF(u2,p.cardNo);fillF(p2,p.password);toast('✓ '+p.name+' 帳密已填')}else if(t>20)clearInterval(iv)},100);return;}}toast('請到北市圖首頁','#a83c2a');return;}fillF(u,p.cardNo);fillF(pw,p.password);toast('✓ '+p.name+' 帳密已填')}
-    function doExport(p){if(!/personal\/list/.test(location.pathname)){toast('跳到借閱頁...');location.href=LIST;return;}if(document.getElementById('username')){toast('未登入','#a83c2a');return;}toast('正在抓取...');window.scrollTo(0,document.body.scrollHeight);setTimeout(function(){window.scrollTo(0,document.body.scrollHeight);setTimeout(function(){var bls=document.querySelectorAll('.booklist');if(!bls.length){toast('找不到','#a83c2a');return;}var books=[];bls.forEach(function(bl){var L=bl.querySelector('.bookleftblock'),M=bl.querySelector('.bookmidblock');if(!L||!M)return;var im=L.querySelector('img'),sr=im?im.src:'',tx=M.textContent||'';var dm=tx.match(/應還日期\s*[：:]\s*(\d{4}[-\/.]\d{1,2}[-\/.]\d{1,2})/);var tm=tx.match(/^\s*(.+?)(?=作者|典藏)/);if(!dm||!tm)return;books.push({title:tm[1].trim().slice(0,120),dueDate:dm[1].replace(/\//g,'-'),cover:sr})});if(!books.length){toast('沒有資料','#a83c2a');return;}navigator.clipboard.writeText(JSON.stringify({app:'FLL',personId:p.id,books:books})).then(function(){toast('✓ '+books.length+'本已複製');setTimeout(function(){window.open(DASH,'_blank')},1500)})},1500)},1000)}
+    function doExport(p){
+      if(document.getElementById('username')){toast('未登入','#a83c2a');return;}
+      toast('正在抓取借閱+預約...');
+      function parseB(doc){var books=[];doc.querySelectorAll('.booklist').forEach(function(bl){var L=bl.querySelector('.bookleftblock'),M=bl.querySelector('.bookmidblock');if(!L||!M)return;var im=L.querySelector('img'),sr=im?im.src:'',tx=M.textContent||'';var dm=tx.match(/應還日期\s*[：:]\s*(\d{4}[-\/.]\d{1,2}[-\/.]\d{1,2})/);var tm=tx.match(/^\s*(.+?)(?=作者|典藏)/);if(!dm||!tm)return;books.push({title:tm[1].trim().slice(0,120),dueDate:dm[1].replace(/\//g,'-'),cover:sr})});return books;}
+      function parseR(doc){var res=[];doc.querySelectorAll('.booklist').forEach(function(bl){var L=bl.querySelector('.bookleftblock'),M=bl.querySelector('.bookmidblock');if(!L||!M)return;var im=L.querySelector('img'),sr=im?im.src:'',tx=M.textContent||'';var tm=tx.match(/^\s*(.+?)(?=作者|典藏)/);var pk=tx.match(/取書館\s*[：:]\s*(.+?)(?=；|$)/);var qp=tx.match(/順位第\s*(\d+)\s*位/);if(!tm)return;res.push({title:tm[1].trim().slice(0,120),pickupLib:pk?pk[1].trim():'',queuePos:qp?+qp[1]:0,cover:sr})});return res;}
+      Promise.all([fetch(LIST,{credentials:'include'}).then(function(r){return r.text()}),fetch('https://book.tpml.edu.tw/personal/list?action=getReserveFile&form=QueryForm',{credentials:'include'}).then(function(r){return r.text()}).catch(function(){return ''})]).then(function(results){var parser=new DOMParser();var books=parseB(parser.parseFromString(results[0],'text/html'));var reservations=results[1]?parseR(parser.parseFromString(results[1],'text/html')):[];var json=JSON.stringify({app:'FLL',personId:p.id,books:books,reservations:reservations});navigator.clipboard.writeText(json).then(function(){toast('✓ 借閱'+books.length+'本+預約'+reservations.length+'本');setTimeout(function(){window.open(DASH,'_blank')},1500)})}).catch(function(e){toast('失敗:'+e.message,'#a83c2a')});
+    }
     var panel=document.createElement('div');panel.id='fll-panel';panel.style.cssText='position:fixed;right:20px;bottom:20px;background:#f4ede0;border:2.5px solid #2d4a3e;border-radius:8px;padding:12px;z-index:999998;font-family:sans-serif;box-shadow:4px 4px 12px rgba(0,0,0,0.25);min-width:230px';
     var hd=document.createElement('div');hd.style.cssText='display:flex;align-items:center;gap:8px;margin-bottom:10px;padding-bottom:8px;border-bottom:1px dashed #c9bfaa';hd.innerHTML='<strong style="color:#2d4a3e;font-size:14px;flex:1">📚 家庭借閱手帳</strong><button id="fll-close" style="background:none;border:none;cursor:pointer;font-size:18px">×</button>';panel.appendChild(hd);
     PEOPLE.forEach(function(p){if(!p.cardNo||!p.password)return;var row=document.createElement('div');row.style.cssText='display:flex;gap:4px;margin-bottom:4px';var lb=document.createElement('div');lb.style.cssText='flex:0 0 45px;font-weight:700;color:'+p.color+';font-size:12px;display:flex;align-items:center';lb.textContent=p.name;row.appendChild(lb);var b1=document.createElement('button');b1.textContent='⭐ 登入';b1.style.cssText='flex:1;padding:6px 8px;background:'+p.color+';color:#fff;border:none;border-radius:3px;cursor:pointer;font-size:12px;font-weight:700';b1.onclick=function(){doLogin(p)};row.appendChild(b1);var b2=document.createElement('button');b2.textContent='📥 匯出';b2.style.cssText='flex:1;padding:6px 8px;background:transparent;color:'+p.color+';border:1.5px solid '+p.color+';border-radius:3px;cursor:pointer;font-size:12px;font-weight:700';b2.onclick=function(){doExport(p)};row.appendChild(b2);panel.appendChild(row)});
@@ -2337,7 +2447,7 @@ async function importFromClipboard() {
   if (document.getElementById('bookmarkletModal').classList.contains('show')) {
     closeBookmarklets();
   }
-  toast(`✓ ${person.name}：新增 ${added} 本${updated > 0 ? `、更新 ${updated} 本` : ''}`);
+  toast(`✓ ${person.name}：新增 ${added} 本${updated > 0 ? `、更新 ${updated} 本` : ''}${resAdded > 0 ? `、預約 ${resAdded} 本` : ''}`);
 }
 
 // 自訂匯入確認彈窗
