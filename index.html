@@ -3041,7 +3041,7 @@ renderBoard();
   // ============================================================
   window.buildExporterBookmarklet = function(personId, personName) {
     var code = '(' + exportViaPopup.toString() + ')(' + JSON.stringify(personId) + ')';
-    return 'javascript:' + encodeURIComponent(code);
+    return 'javascript:void(' + encodeURIComponent(code) + ')';
   };
 
   // ============================================================
@@ -3055,7 +3055,7 @@ renderBoard();
       });
     if (!ppl.length) { toast('請先設定家人帳密'); return null; }
 
-    function panelCode(PEOPLE, EXPORT_FN_STR) {
+    function panelCode(PEOPLE, EXPORT_FN) {
       if (document.getElementById('fll-panel')) { document.getElementById('fll-panel').remove(); return; }
 
       function fillF(e, v) {
@@ -3091,8 +3091,7 @@ renderBoard();
         fillF(u, p.cardNo); fillF(pw, p.password); smallToast('✓ ' + p.name + ' 帳密已填');
       }
 
-      var exportFn = new Function('return (' + EXPORT_FN_STR + ');')();
-      function doExport(p) { exportFn(p.id); }
+      function doExport(p) { EXPORT_FN(p.id); }
 
       var panel = document.createElement('div'); panel.id = 'fll-panel';
       panel.style.cssText = 'position:fixed;right:20px;bottom:20px;background:#f4ede0;border:2.5px solid #2d4a3e;border-radius:8px;padding:12px;z-index:999998;font-family:sans-serif;box-shadow:4px 4px 12px rgba(0,0,0,.25);min-width:240px';
@@ -3114,9 +3113,8 @@ renderBoard();
       document.getElementById('fll-close').onclick = function() { panel.remove(); };
     }
 
-    var exportFnStr = exportViaPopup.toString();
-    var code = '(' + panelCode.toString() + ')(' + JSON.stringify(ppl) + ',' + JSON.stringify(exportFnStr) + ')';
-    return 'javascript:' + encodeURIComponent(code);
+    var code = '(function(){var _ef=' + exportViaPopup.toString() + ';(' + panelCode.toString() + ')(' + JSON.stringify(ppl) + ',_ef)})()';
+    return 'javascript:void(' + encodeURIComponent(code) + ')';
   };
 
   console.log('✓ 家庭借閱手帳：書籤已升級為 Popup 抓取版（window.open + DOM 輪詢，繞過 X-Frame-Options）');
