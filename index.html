@@ -2134,7 +2134,7 @@ function buildExporterBookmarklet(personId, personName) {
     function nd(s){var m2=s.match(/(\d{4})[-\/\.](\d{1,2})[-\/\.](\d{1,2})/);return m2?m2[1]+'-'+('0'+m2[2]).slice(-2)+'-'+('0'+m2[3]).slice(-2):'';}
     // 判斷在哪個頁面
     var isLend = /getLendFile/.test(location.search);
-    var isRes = /getReserveFile|getTPMLReadBook/.test(location.search);
+    var isRes = /getTPMLReadBook|getTPMLReadBook/.test(location.search);
     if (!isLend && !isRes) {
       // 不在借閱或預約頁，先跳到借閱頁
       toast('跳到借閱頁...');
@@ -2197,7 +2197,7 @@ function buildExporterBookmarklet(personId, personName) {
     }, 1000);
   }
   var LEND = 'https://book.tpml.edu.tw/personal/list?action=getLendFile&form=QueryForm';
-  var RES = 'https://book.tpml.edu.tw/personal/list?action=getReserveFile&form=QueryForm';
+  var RES = 'https://book.tpml.edu.tw/personal/list?action=getTPMLReadBook&form=QueryForm';
   var code = '(' + exportCode.toString() + ')(' + JSON.stringify(personId) + ',' + JSON.stringify(LEND) + ',' + JSON.stringify(RES) + ')';
   return 'javascript:' + encodeURIComponent(code);
 }
@@ -2217,7 +2217,7 @@ function buildAssistantBookmarklet() {
     function doExport(p){
       if(document.getElementById('username')){toast('未登入','#a83c2a');return;}
       var isLend=/getLendFile/.test(location.search);
-      var isRes=/getReserveFile|getTPMLReadBook/.test(location.search);
+      var isRes=/getTPMLReadBook|getTPMLReadBook/.test(location.search);
       if(!isLend&&!isRes){toast('跳到借閱頁...');location.href=LIST;return;}
       toast('正在抓取...');window.scrollTo(0,document.body.scrollHeight);
       setTimeout(function(){window.scrollTo(0,document.body.scrollHeight);setTimeout(function(){
@@ -2226,7 +2226,7 @@ function buildAssistantBookmarklet() {
           var books=[];bls.forEach(function(bl){var L=bl.querySelector('.bookleftblock'),M=bl.querySelector('.bookmidblock');if(!L||!M)return;var im=L.querySelector('img'),sr=im?im.src:'',tx=M.textContent||'';var dm=tx.match(/應還日期\s*[：:]\s*(\d{4}[-\/.]\d{1,2}[-\/.]\d{1,2})/);var tm=tx.match(/^\s*(.+?)(?=作者|典藏)/);if(!dm||!tm)return;books.push({title:tm[1].trim().slice(0,120),dueDate:dm[1].replace(/\//g,'-'),cover:sr})});
           sessionStorage.setItem('fll_books_'+p.id,JSON.stringify(books));
           toast('✓ 借閱 '+books.length+'本，跳到預約頁...');
-          setTimeout(function(){location.href='https://book.tpml.edu.tw/personal/list?action=getReserveFile&form=QueryForm'},1200);
+          setTimeout(function(){location.href='https://book.tpml.edu.tw/personal/list?action=getTPMLReadBook&form=QueryForm'},1200);
         }else{
           var res=[];bls.forEach(function(bl){var L=bl.querySelector('.bookleftblock'),M=bl.querySelector('.bookmidblock');if(!L||!M)return;var im=L.querySelector('img'),sr=im?im.src:'',tx=M.textContent||'';var tm=tx.match(/^\s*(.+?)(?=作者|典藏)/);var pk=tx.match(/取書館\s*[：:]\s*(.+?)(?=；|$)/);var qp=tx.match(/順位第\s*(\d+)\s*位/);if(!tm)return;res.push({title:tm[1].trim().slice(0,120),pickupLib:pk?pk[1].trim():'',queuePos:qp?+qp[1]:0,cover:sr})});
           var saved=[];try{saved=JSON.parse(sessionStorage.getItem('fll_books_'+p.id)||'[]')}catch(e){}sessionStorage.removeItem('fll_books_'+p.id);
@@ -2284,7 +2284,7 @@ function exportAllBookmarks() {
   // 常用連結
   lines.push('        <DT><A HREF="https://book.tpml.edu.tw/" ADD_DATE="' + now + '">🏛️ 北市圖首頁</A>');
   lines.push('        <DT><A HREF="https://book.tpml.edu.tw/personal/list?action=getLendFile&amp;form=QueryForm" ADD_DATE="' + now + '">📖 我的借閱</A>');
-  lines.push('        <DT><A HREF="https://book.tpml.edu.tw/personal/list?action=getReserveFile&amp;form=QueryForm" ADD_DATE="' + now + '">📋 我的預約</A>');
+  lines.push('        <DT><A HREF="https://book.tpml.edu.tw/personal/list?action=getTPMLReadBook&amp;form=QueryForm" ADD_DATE="' + now + '">📋 我的預約</A>');
   lines.push('        <DT><A HREF="https://oliver603-juang.github.io/family-library/" ADD_DATE="' + now + '">🏠 家庭借閱手帳</A>');
   lines.push('    </DL><p>');
   lines.push('</DL><p>');
